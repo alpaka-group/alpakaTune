@@ -14,8 +14,7 @@ launch geometry. Use :doc:`automatic_spaces` to grow a candidate catalog from
 feedback, and :doc:`execution_modes` to choose exploration and selection
 independently. :doc:`history_workflows` shows how to replay or adapt from saved
 measurements in another run.
-The core guide describes the ``dev`` API. GPU availability depends on the alpaka
-backends enabled in your build.
+GPU availability depends on the alpaka backends enabled in your build.
 
 Five concepts to keep in mind
 -----------------------------
@@ -67,12 +66,11 @@ Five concepts to keep in mind
 Experimental metrics
 --------------------
 
-The ``tunerEnhancedMetrics`` feature branch integrates the optional
-`alpakaMetrics <https://github.com/TimHanel00/alpakaMetrics>`_ dependency and
-adds counter-based objectives. Its :doc:`experimental_metrics` guide explains the CMake option, pinned alpaka
-ownership, and metric availability. The callable scoring
-API in :doc:`custom_metrics` is already part of ``dev`` and needs no metrics
-dependency.
+The optional `alpakaMetrics <https://github.com/TimHanel00/alpakaMetrics>`_
+dependency adds counter-based objectives. Enable it with
+``-DalpakaTune_DEP_METRICS=ON``. The :doc:`experimental_metrics` guide explains
+the CMake option, pinned alpaka ownership, and metric availability. The callable
+scoring API in :doc:`custom_metrics` needs no metrics dependency.
 
 .. toctree::
    :maxdepth: 1

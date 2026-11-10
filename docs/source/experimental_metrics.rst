@@ -1,17 +1,15 @@
 Experimental metrics objectives
 ===============================
 
-This integration is currently available on the ``tunerEnhancedMetrics`` feature
-branch. The general scoring-function API in :doc:`custom_metrics` is also
-available on ``dev``. Metrics remain optional on the feature branch; ordinary
-runtime tuning works without them.
+This integration is optional and experimental. Enable it with
+``-DalpakaTune_DEP_METRICS=ON``. Ordinary runtime tuning and the general
+scoring-function API in :doc:`custom_metrics` work without it.
 
 Build and dependency ownership
 ------------------------------
 
 .. code-block:: sh
 
-   git switch tunerEnhancedMetrics
    cmake -S . -B build-metrics -G Ninja \
        -DCMAKE_BUILD_TYPE=Release \
        -DalpakaTune_BUILD_EXAMPLES=ON \
