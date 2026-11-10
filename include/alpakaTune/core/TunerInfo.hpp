@@ -18,7 +18,7 @@
 namespace alpakaTune
 {
 
-    template<typename TunablesType, typename Device, typename MetricPolicy = metric::Timing>
+    template<typename T_TunablesType, typename T_Device, typename T_MetricPolicy = metric::Timing>
     class Tuner;
 
     namespace detail
@@ -67,7 +67,7 @@ namespace alpakaTune
         }
 
     private:
-        template<typename TunablesType, typename Device, typename MetricPolicy>
+        template<typename T_TunablesType, typename T_Device, typename T_MetricPolicy>
         friend class Tuner;
 
         explicit ConfigurationValidity(std::shared_ptr<detail::ConfigurationValidityState> state)

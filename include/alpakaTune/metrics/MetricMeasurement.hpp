@@ -139,11 +139,11 @@ namespace alpakaTune::metrics
     {
         /** Captures the selected kernel's returned handle, without inspecting history.
          */
-        template<typename Queue>
+        template<typename T_Queue>
         class CapturingQueue
         {
         public:
-            CapturingQueue(Queue const& queue, std::optional<alpakaMetrics::Measurement>& measurement)
+            CapturingQueue(T_Queue const& queue, std::optional<alpakaMetrics::Measurement>& measurement)
                 : m_queue(queue)
                 , m_measurement(measurement)
             {
@@ -177,7 +177,7 @@ namespace alpakaTune::metrics
             }
 
         private:
-            Queue const& m_queue;
+            T_Queue const& m_queue;
             std::optional<alpakaMetrics::Measurement>& m_measurement;
         };
 
@@ -196,10 +196,10 @@ namespace alpakaTune::metrics
                 double score;
             };
 
-            template<typename Queue>
+            template<typename T_Queue>
             [[nodiscard]] auto measure(
                 TunerConfig const& config,
-                Queue const& queue,
+                T_Queue const& queue,
                 std::string const& label,
                 auto&& launch) -> Sample
             {

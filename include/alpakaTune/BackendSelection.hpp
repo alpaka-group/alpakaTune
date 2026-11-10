@@ -107,8 +107,8 @@ namespace alpakaTune
         return true;
     }
 
-    template<alpaka::concepts::BackendSpec Backend>
-    inline auto backendSelected(Backend const& backend) -> bool
+    template<alpaka::concepts::BackendSpec T_Backend>
+    inline auto backendSelected(T_Backend const& backend) -> bool
     {
         auto const& selection = backendSelection();
         if(!selection)

@@ -122,26 +122,26 @@ namespace alpakaTune::generate
 
     namespace detail
     {
-        template<auto Minimum, auto Maximum, std::size_t... I>
+        template<auto T_minimum, auto T_maximum, std::size_t... I>
         consteval auto compileLinear(std::index_sequence<I...>)
         {
-            static_assert(Minimum <= Maximum);
-            return CVals<static_cast<decltype(Minimum)>(
-                Minimum
-                + (static_cast<long double>(Maximum) - Minimum) * I
+            static_assert(T_minimum <= T_maximum);
+            return CVals<static_cast<decltype(T_minimum)>(
+                T_minimum
+                + (static_cast<long double>(T_maximum) - T_minimum) * I
                       / (sizeof...(I) > 1u ? sizeof...(I) - 1u : 1u))...>{};
         }
 
-        template<auto Minimum, auto Maximum, auto Current, auto... Values>
+        template<auto T_minimum, auto T_maximum, auto T_current, auto... T_values>
         consteval auto compileLog()
         {
-            static_assert(Minimum > 0 && Minimum <= Maximum);
-            if constexpr(Current >= Maximum)
-                return CVals<Values..., Maximum>{};
-            else if constexpr(Current > Maximum / 2)
-                return CVals<Values..., Current, Maximum>{};
+            static_assert(T_minimum > 0 && T_minimum <= T_maximum);
+            if constexpr(T_current >= T_maximum)
+                return CVals<T_values..., T_maximum>{};
+            else if constexpr(T_current > T_maximum / 2)
+                return CVals<T_values..., T_current, T_maximum>{};
             else
-                return compileLog<Minimum, Maximum, Current * 2, Values..., Current>();
+                return compileLog<T_minimum, T_maximum, T_current * 2, T_values..., T_current>();
         }
     } // namespace detail
 } // namespace alpakaTune::generate
@@ -149,34 +149,34 @@ namespace alpakaTune::generate
 namespace alpakaTune::domain
 {
     /** Generate at most eight linearly spaced compiled alternatives from bounds. */
-    template<auto Minimum, auto Maximum>
+    template<auto T_minimum, auto T_maximum>
     [[nodiscard]] consteval auto compileInterval(hint::Linear = {})
     {
-        static_assert(std::integral<decltype(Minimum)> && std::integral<decltype(Maximum)>);
-        static_assert(Minimum <= Maximum);
+        static_assert(std::integral<decltype(T_minimum)> && std::integral<decltype(T_maximum)>);
+        static_assert(T_minimum <= T_maximum);
         constexpr auto count
-            = static_cast<std::size_t>(std::min(8.0L, static_cast<long double>(Maximum) - Minimum + 1.0L));
-        return generate::detail::compileLinear<Minimum, Maximum>(std::make_index_sequence<count>{});
+            = static_cast<std::size_t>(std::min(8.0L, static_cast<long double>(T_maximum) - T_minimum + 1.0L));
+        return generate::detail::compileLinear<T_minimum, T_maximum>(std::make_index_sequence<count>{});
     }
 
     /** Generate powers of two relative to the lower bound, including both bounds.
      */
-    template<auto Minimum, auto Maximum>
+    template<auto T_minimum, auto T_maximum>
     [[nodiscard]] consteval auto compileInterval(hint::Logarithmic)
     {
-        return generate::detail::compileLog<Minimum, Maximum, Minimum>();
+        return generate::detail::compileLog<T_minimum, T_maximum, T_minimum>();
     }
 } // namespace alpakaTune::domain
 
 namespace alpakaTune
 {
     /** Concise automatic compiled domain declared using bounds only. */
-    template<auto Minimum, auto Maximum, typename... Hints>
-    [[nodiscard]] auto autoCandidates(Hints... hints)
+    template<auto T_minimum, auto T_maximum, typename... T_Hints>
+    [[nodiscard]] auto autoCandidates(T_Hints... hints)
     {
-        if constexpr((std::same_as<std::remove_cvref_t<Hints>, hint::Logarithmic> || ... || false))
-            return autoCandidates(domain::compileInterval<Minimum, Maximum>(hint::logarithmic), hints...);
+        if constexpr((std::same_as<std::remove_cvref_t<T_Hints>, hint::Logarithmic> || ... || false))
+            return autoCandidates(domain::compileInterval<T_minimum, T_maximum>(hint::logarithmic), hints...);
         else
-            return autoCandidates(domain::compileInterval<Minimum, Maximum>(), hints...);
+            return autoCandidates(domain::compileInterval<T_minimum, T_maximum>(), hints...);
     }
 } // namespace alpakaTune

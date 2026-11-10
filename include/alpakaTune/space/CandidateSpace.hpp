@@ -24,11 +24,11 @@ namespace alpakaTune::detail
 {
 
     /** One stable-ID provider for fixed Cartesian and feedback-generated spaces. */
-    template<std::size_t Dimensions>
+    template<std::size_t T_dimensions>
     class CandidateSpace
     {
     public:
-        using Indices = std::array<std::size_t, Dimensions>;
+        using Indices = std::array<std::size_t, T_dimensions>;
 
         void initialise(
             std::span<std::size_t const> sizes,
@@ -56,7 +56,7 @@ namespace alpakaTune::detail
                 throw std::overflow_error{"The Cartesian tuning space is too large."};
         }
 
-        void setHints(Indices preferred, bool hasPreferred, std::array<bool, Dimensions> categorical)
+        void setHints(Indices preferred, bool hasPreferred, std::array<bool, T_dimensions> categorical)
         {
             m_preferred = preferred;
             m_hasPreferred = hasPreferred;
@@ -85,7 +85,7 @@ namespace alpakaTune::detail
             if(!m_generate)
             {
                 std::size_t result{};
-                for(std::size_t d{}; d < Dimensions; ++d)
+                for(std::size_t d{}; d < T_dimensions; ++d)
                 {
                     if(values[d] >= m_sizes[d])
                         return std::nullopt;
@@ -159,8 +159,9 @@ namespace alpakaTune::detail
         }
 
         /** Canonicalize dependencies before validating and registering a tuple. */
-        template<typename Canonicalize, typename Accept>
-        auto expand(Canonicalize canonicalize, Accept accept, std::span<std::size_t const> best = {}) -> std::size_t
+        template<typename T_Canonicalize, typename T_Accept>
+        auto expand(T_Canonicalize canonicalize, T_Accept accept, std::span<std::size_t const> best = {})
+            -> std::size_t
         {
             if(!canExpand())
                 return 0u;
@@ -178,12 +179,12 @@ namespace alpakaTune::detail
                 else if(local)
                 {
                     proposal = indices(best[(attempts / 4u) % best.size()]);
-                    auto const first = (attempts / 4u) % std::max<std::size_t>(1u, Dimensions);
+                    auto const first = (attempts / 4u) % std::max<std::size_t>(1u, T_dimensions);
                     for(std::size_t change{}; change < (attempts % 2u + 1u); ++change)
                     {
-                        if constexpr(Dimensions > 0u)
+                        if constexpr(T_dimensions > 0u)
                         {
-                            auto const d = (first + change) % Dimensions;
+                            auto const d = (first + change) % T_dimensions;
                             auto const radius = std::max<std::size_t>(
                                 1u,
                                 m_sizes[d] >> std::min<std::size_t>(
@@ -212,10 +213,10 @@ namespace alpakaTune::detail
                     }
                     else
                     {
-                        for(std::size_t d{}; d < Dimensions; ++d)
+                        for(std::size_t d{}; d < T_dimensions; ++d)
                             proposal[d] = std::uniform_int_distribution<std::size_t>{0u, m_sizes[d] - 1u}(m_random);
                         if(previous == 0u && attempts <= 3u)
-                            for(std::size_t d{}; d < Dimensions; ++d)
+                            for(std::size_t d{}; d < T_dimensions; ++d)
                                 proposal[d] = attempts == 1u ? 0u : attempts == 2u ? m_sizes[d] - 1u : m_sizes[d] / 2u;
                     }
                 }
@@ -254,7 +255,7 @@ namespace alpakaTune::detail
             auto validated = std::vector<Indices>{};
             for(auto const& row : catalog)
             {
-                for(std::size_t d{}; d < Dimensions; ++d)
+                for(std::size_t d{}; d < T_dimensions; ++d)
                     if(row[d] >= m_sizes[d])
                         throw std::invalid_argument{"Saved candidate is outside its domain."};
                 if(std::find(validated.begin(), validated.end(), row) != validated.end())
@@ -324,7 +325,7 @@ namespace alpakaTune::detail
         [[nodiscard]] auto cartesianIndices(std::size_t value) const -> Indices
         {
             Indices result{};
-            for(std::size_t p = Dimensions; p > 0u; --p)
+            for(std::size_t p = T_dimensions; p > 0u; --p)
             {
                 auto const d = p - 1u;
                 result[d] = value % m_sizes[d];
@@ -335,7 +336,7 @@ namespace alpakaTune::detail
 
         Indices m_preferred{};
         bool m_hasPreferred{};
-        std::array<bool, Dimensions> m_categorical{};
+        std::array<bool, T_dimensions> m_categorical{};
         std::vector<std::size_t> m_sizes;
         std::optional<std::size_t> m_total;
         std::vector<Indices> m_catalog;

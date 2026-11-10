@@ -165,50 +165,50 @@ namespace alpakaTune
         }
 
         /** A child domain constrained by values of named parent parameters. */
-        template<typename Domain, typename Generator, typename... Names>
-        struct Dependent : Domain
+        template<typename T_Domain, typename T_Generator, typename... T_Names>
+        struct Dependent : T_Domain
         {
             static_assert(
-                requires(Domain const& domain) {
-                    typename Domain::value_type;
+                requires(T_Domain const& domain) {
+                    typename T_Domain::value_type;
                     domain.at(0u);
                     domain.size();
                 },
                 "A dependent child domain must supply runtime values; compiled "
                 "parameters can be parents.");
             static constexpr bool runtimeDomain = true;
-            using parent_names = std::tuple<Names...>;
-            Generator generator;
+            using ParentNames = std::tuple<T_Names...>;
+            T_Generator generator;
 
-            explicit Dependent(Domain values, Generator function)
-                : Domain(std::move(values))
+            explicit Dependent(T_Domain values, T_Generator function)
+                : T_Domain(std::move(values))
                 , generator(std::move(function))
             {
             }
         };
 
-        template<typename Domain, typename Name, typename Generator>
-        [[nodiscard]] auto dependent(Domain values, Name, Generator generator)
+        template<typename T_Domain, typename T_Name, typename T_Generator>
+        [[nodiscard]] auto dependent(T_Domain values, T_Name, T_Generator generator)
         {
-            return Dependent<Domain, Generator, Name>{std::move(values), std::move(generator)};
+            return Dependent<T_Domain, T_Generator, T_Name>{std::move(values), std::move(generator)};
         }
 
-        template<typename Domain, typename... Names, typename Generator>
-        [[nodiscard]] auto dependent(Domain values, std::tuple<Names...>, Generator generator)
+        template<typename T_Domain, typename... T_Names, typename T_Generator>
+        [[nodiscard]] auto dependent(T_Domain values, std::tuple<T_Names...>, T_Generator generator)
         {
-            return Dependent<Domain, Generator, Names...>{std::move(values), std::move(generator)};
+            return Dependent<T_Domain, T_Generator, T_Names...>{std::move(values), std::move(generator)};
         }
     } // namespace domain
 
     /** Opt a domain into hardware- and feedback-informed candidate generation. */
-    template<typename Domain>
-    class AutoCandidates : public Domain
+    template<typename T_Domain>
+    class AutoCandidates : public T_Domain
     {
     public:
-        using domain_type = Domain;
+        using DomainType = T_Domain;
         static constexpr bool automaticCandidates = true;
 
-        explicit AutoCandidates(Domain values) : Domain(std::move(values))
+        explicit AutoCandidates(T_Domain values) : T_Domain(std::move(values))
         {
         }
 
@@ -255,20 +255,20 @@ namespace alpakaTune
                 if(!m_preferred)
                     throw std::invalid_argument{"Preferred value is not an alternative."};
             }
-            else if constexpr(requires { typename Domain::values; })
+            else if constexpr(requires { typename T_Domain::Values; })
             {
                 [&]<std::size_t... I>(std::index_sequence<I...>)
                 {
                     (
                         [&]
                         {
-                            using Value = std::tuple_element_t<I, typename Domain::values>;
+                            using Value = std::tuple_element_t<I, typename T_Domain::Values>;
                             if constexpr(requires { Value::value == value.value; })
                                 if(Value::value == value.value)
                                     m_preferred = I;
                         }(),
                         ...);
-                }(std::make_index_sequence<Domain::size>{});
+                }(std::make_index_sequence<T_Domain::size>{});
                 if(!m_preferred)
                     throw std::invalid_argument{"Preferred value is not a compiled alternative."};
             }
@@ -303,7 +303,7 @@ namespace alpakaTune
                              this->indexOf(this->at(index));
                          })
             {
-                using T = typename Domain::value_type;
+                using T = typename T_Domain::value_type;
                 auto value = this->at(index);
                 if(sampleGlobal && m_logarithmic && this->size() > 1u)
                 {
@@ -346,10 +346,10 @@ namespace alpakaTune
         std::optional<std::size_t> m_preferred;
     };
 
-    template<typename Domain, typename... Hints>
-    [[nodiscard]] auto autoCandidates(Domain values, Hints... hints) -> AutoCandidates<Domain>
+    template<typename T_Domain, typename... T_Hints>
+    [[nodiscard]] auto autoCandidates(T_Domain values, T_Hints... hints) -> AutoCandidates<T_Domain>
     {
-        auto result = AutoCandidates<Domain>{std::move(values)};
+        auto result = AutoCandidates<T_Domain>{std::move(values)};
         (result.setHint(hints), ...);
         return result;
     }

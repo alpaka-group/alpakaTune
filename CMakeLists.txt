@@ -10,6 +10,7 @@ include(CMakePackageConfigHelpers)
 option(alpakaTune_BUILD_TESTING "Build alpakaTune tests" OFF)
 option(alpakaTune_BUILD_EXAMPLES "Build alpakaTune examples" OFF)
 option(alpakaTune_HEADER_CHECKS "Build public-header self-containment checks" OFF)
+option(alpakaTune_CLANG_TIDY "Run clang-tidy on public headers, tests and examples (requires Clang)" OFF)
 option(alpakaTune_ENABLE_PERSISTENCE "Enable JSON persistent histories" ON)
 set(alpakaTune_BUNDLED_MODEL
     "${CMAKE_CURRENT_SOURCE_DIR}/models/alpakaTune-default.atml"
@@ -128,7 +129,7 @@ install(
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/alpakaTune
 )
 
-if(alpakaTune_HEADER_CHECKS OR alpakaTune_BUILD_TESTING)
+if(alpakaTune_HEADER_CHECKS OR alpakaTune_BUILD_TESTING OR alpakaTune_CLANG_TIDY)
     include(CTest)
     enable_testing()
 endif()
@@ -153,4 +154,9 @@ endif()
 
 if(alpakaTune_BUILD_EXAMPLES)
     add_subdirectory(example)
+endif()
+
+# Added last so that the tests and examples configured above are checked as well.
+if(alpakaTune_CLANG_TIDY)
+    add_subdirectory(clangTidy)
 endif()

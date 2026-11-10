@@ -17,11 +17,11 @@ namespace alpakaTune
      * launch shape selected for a FrameSpec and kernel bundle. The mapping can be
      * customised by specialising alpaka's corresponding internal operation.
      */
-    template<typename Device, typename FrameSpec, typename KernelBundle>
+    template<typename T_Device, typename T_FrameSpec, typename T_KernelBundle>
     [[nodiscard]] auto deriveThreadSpec(
-        Device const& device,
-        FrameSpec const& frameSpec,
-        KernelBundle const& kernelBundle)
+        T_Device const& device,
+        T_FrameSpec const& frameSpec,
+        T_KernelBundle const& kernelBundle)
     {
         return alpaka::onHost::internal::adjustThreadSpec(*device.get(), frameSpec, kernelBundle);
     }

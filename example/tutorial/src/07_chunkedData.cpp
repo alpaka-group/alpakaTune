@@ -27,9 +27,9 @@
 
 struct VectorAddKernel1D
 {
-    template<typename TAcc>
+    template<typename T_TAcc>
     ALPAKA_FN_ACC void operator()(
-        TAcc const& acc,
+        T_TAcc const& acc,
         alpaka::concepts::CVector auto chunkSize,
         alpaka::concepts::IDataSource auto const& in1,
         alpaka::concepts::IDataSource auto const& in2,
@@ -97,9 +97,9 @@ struct VectorAddKernel1D
 
 struct VectorAddKernel3D
 {
-    template<typename TAcc>
+    template<typename T_TAcc>
     ALPAKA_FN_ACC void operator()(
-        TAcc const& acc,
+        T_TAcc const& acc,
         alpaka::concepts::CVector auto chunkExtents,
         alpaka::concepts::IDataSource auto const& in1,
         alpaka::concepts::IDataSource auto const& in2,
@@ -178,16 +178,16 @@ void testVectorAddKernel(alpaka::onHost::concepts::Device auto device, auto comp
 
     // allocate input and output host buffers in pinned memory accessible by the
     // Platform devices
-    auto in1_h = alpaka::onHost::allocHost<float>(size);
-    auto in2_h = alpaka::onHost::allocHostLike(in1_h);
-    auto out_h = alpaka::onHost::allocHostLike(in1_h);
+    auto in1H = alpaka::onHost::allocHost<float>(size);
+    auto in2H = alpaka::onHost::allocHostLike(in1H);
+    auto outH = alpaka::onHost::allocHostLike(in1H);
 
     // fill the input buffers with random data, and the output buffer with zeros
     for(uint32_t i = 0; i < size; ++i)
     {
-        in1_h[i] = dist(rand);
-        in2_h[i] = dist(rand);
-        out_h[i] = 0.;
+        in1H[i] = dist(rand);
+        in2H[i] = dist(rand);
+        outH[i] = 0.;
     }
 
     // run the test the given device
@@ -195,18 +195,18 @@ void testVectorAddKernel(alpaka::onHost::concepts::Device auto device, auto comp
     auto tuningQueue = alpakaTune::makeQueue(device, alpaka::queueKind::nonBlocking, alpakaTune::timing::enabled);
 
     // allocate input and output buffers on the device
-    auto in1_d = alpaka::onHost::allocLike(device, in1_h);
-    auto in2_d = alpaka::onHost::allocLike(device, in2_h);
-    auto out_d = alpaka::onHost::allocLike(device, out_h);
+    auto in1D = alpaka::onHost::allocLike(device, in1H);
+    auto in2D = alpaka::onHost::allocLike(device, in2H);
+    auto outD = alpaka::onHost::allocLike(device, outH);
 
     // copy the input data to the device; the size is known from the buffer
     // objects
-    alpaka::onHost::memcpy(queue, in1_d, in1_h);
-    alpaka::onHost::memcpy(queue, in2_d, in2_h);
+    alpaka::onHost::memcpy(queue, in1D, in1H);
+    alpaka::onHost::memcpy(queue, in2D, in2H);
 
     // fill the output buffer with zeros; the size is known from the buffer
     // objects
-    alpaka::onHost::memset(queue, out_d, 0x00);
+    alpaka::onHost::memset(queue, outD, 0x00);
 
     // launch the 1-dimensional kernel
     constexpr auto chunkSize = 32u;
@@ -231,14 +231,14 @@ void testVectorAddKernel(alpaka::onHost::concepts::Device auto device, auto comp
 
     // fill the output buffer with zeros; the size is known from the buffer
     // objects
-    alpaka::onHost::memset(queue, out_d, 0x00);
+    alpaka::onHost::memset(queue, outD, 0x00);
 
     std::cout << "Testing VectorAddKernel with vector indices with a grid of " << frameSpec << "\n";
     for(std::size_t runs = 0u; alpakaTune::example::applicationRunsRemain(runs, tuner); ++runs)
-        tuner.enqueue(tuningQueue, frameSpec, VectorAddKernel1D{}, alpakaTune::frameExtent, in1_d, in2_d, out_d);
+        tuner.enqueue(tuningQueue, frameSpec, VectorAddKernel1D{}, alpakaTune::frameExtent, in1D, in2D, outD);
 
     // copy the results from the device to the host
-    alpaka::onHost::memcpy(queue, out_h, out_d);
+    alpaka::onHost::memcpy(queue, outH, outD);
 
     // wait for all the operations to complete
     alpaka::onHost::wait(queue);
@@ -246,9 +246,9 @@ void testVectorAddKernel(alpaka::onHost::concepts::Device auto device, auto comp
     // check the results
     for(uint32_t i = 0; i < size; ++i)
     {
-        float sum = in1_h[i] + in2_h[i];
-        verify(out_h[i] < sum + epsilon);
-        verify(out_h[i] > sum - epsilon);
+        float sum = in1H[i] + in2H[i];
+        verify(outH[i] < sum + epsilon);
+        verify(outH[i] > sum - epsilon);
     }
     std::cout << "success\n";
 }
@@ -269,17 +269,17 @@ void testVectorAddKernel3D(alpaka::onHost::concepts::Device auto device, auto co
 
     // allocate input and output host buffers in pinned memory accessible by the
     // Platform devices
-    auto in1_h = alpaka::onHost::allocHost<float>(ndsize);
-    auto in2_h = alpaka::onHost::allocHostLike(in1_h);
-    auto out_h = alpaka::onHost::allocHostLike(in1_h);
+    auto in1H = alpaka::onHost::allocHost<float>(ndsize);
+    auto in2H = alpaka::onHost::allocHostLike(in1H);
+    auto outH = alpaka::onHost::allocHostLike(in1H);
 
     // fill the input buffers with random data, and the output buffer with zeros
     for(uint32_t i = 0; i < size; ++i)
     {
         auto lIdx = alpaka::mapToND(ndsize, i);
-        in1_h[lIdx] = dist(rand);
-        in2_h[lIdx] = dist(rand);
-        out_h[lIdx] = 0.;
+        in1H[lIdx] = dist(rand);
+        in2H[lIdx] = dist(rand);
+        outH[lIdx] = 0.;
     }
 
     // run the test the given device
@@ -287,18 +287,18 @@ void testVectorAddKernel3D(alpaka::onHost::concepts::Device auto device, auto co
     auto tuningQueue = alpakaTune::makeQueue(device, alpaka::queueKind::nonBlocking, alpakaTune::timing::enabled);
 
     // allocate input and output buffers on the device
-    auto in1_d = alpaka::onHost::allocLike(device, in1_h);
-    auto in2_d = alpaka::onHost::allocLike(device, in2_h);
-    auto out_d = alpaka::onHost::allocLike(device, out_h);
+    auto in1D = alpaka::onHost::allocLike(device, in1H);
+    auto in2D = alpaka::onHost::allocLike(device, in2H);
+    auto outD = alpaka::onHost::allocLike(device, outH);
 
     // copy the input data to the device; the size is known from the buffer
     // objects
-    alpaka::onHost::memcpy(queue, in1_d, in1_h);
-    alpaka::onHost::memcpy(queue, in2_d, in2_h);
+    alpaka::onHost::memcpy(queue, in1D, in1H);
+    alpaka::onHost::memcpy(queue, in2D, in2H);
 
     // fill the output buffer with zeros; the size is known from the buffer
     // objects
-    alpaka::onHost::memset(queue, out_d, 0x00);
+    alpaka::onHost::memset(queue, outD, 0x00);
 
     // launch the 3-dimensional kernel
     auto chunkExtents = alpaka::CVec<uint32_t, 4, 4, 2>{};
@@ -323,10 +323,10 @@ void testVectorAddKernel3D(alpaka::onHost::concepts::Device auto device, auto co
     std::cout << "Testing VectorAddKernel3D with vector indices with a grid of " << frameSpec << "\n";
 
     for(std::size_t runs = 0u; alpakaTune::example::applicationRunsRemain(runs, tuner); ++runs)
-        tuner.enqueue(tuningQueue, frameSpec, VectorAddKernel3D{}, alpakaTune::frameExtent, in1_d, in2_d, out_d);
+        tuner.enqueue(tuningQueue, frameSpec, VectorAddKernel3D{}, alpakaTune::frameExtent, in1D, in2D, outD);
 
     // copy the results from the device to the host
-    alpaka::onHost::memcpy(queue, out_h, out_d);
+    alpaka::onHost::memcpy(queue, outH, outD);
 
     // wait for all the operations to complete
     alpaka::onHost::wait(queue);
@@ -335,9 +335,9 @@ void testVectorAddKernel3D(alpaka::onHost::concepts::Device auto device, auto co
     for(uint32_t i = 0; i < size; ++i)
     {
         auto lIdx = alpaka::mapToND(ndsize, i);
-        float sum = in1_h[lIdx] + in2_h[lIdx];
-        verify(out_h[lIdx] < sum + epsilon);
-        verify(out_h[lIdx] > sum - epsilon);
+        float sum = in1H[lIdx] + in2H[lIdx];
+        verify(outH[lIdx] < sum + epsilon);
+        verify(outH[lIdx] > sum - epsilon);
     }
     std::cout << "success\n";
 }

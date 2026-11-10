@@ -28,11 +28,11 @@ namespace alpakaTune
         };
 
         /** @brief Application scoring function, evaluated only by provideMetrics(). */
-        template<typename Function>
+        template<typename T_Function>
         struct FunctionObjective
         {
             std::string name;
-            Function function;
+            T_Function function;
         };
 
         /** @brief Application-provided elapsed seconds, eligible for benefit budgeting.
@@ -42,11 +42,11 @@ namespace alpakaTune
             std::string name;
         };
 
-        template<typename Function>
+        template<typename T_Function>
         struct ElapsedTimeObjective
         {
             std::string name;
-            Function function;
+            T_Function function;
         };
 
     } // namespace metric
@@ -57,30 +57,30 @@ namespace alpakaTune
         inline constexpr bool isCustomMetricToken = false;
         template<>
         inline constexpr bool isCustomMetricToken<metric::Custom> = true;
-        template<typename Function>
-        inline constexpr bool isCustomMetricToken<metric::FunctionObjective<Function>> = true;
+        template<typename T_Function>
+        inline constexpr bool isCustomMetricToken<metric::FunctionObjective<T_Function>> = true;
         template<>
         inline constexpr bool isCustomMetricToken<metric::ElapsedTime> = true;
-        template<typename Function>
-        inline constexpr bool isCustomMetricToken<metric::ElapsedTimeObjective<Function>> = true;
+        template<typename T_Function>
+        inline constexpr bool isCustomMetricToken<metric::ElapsedTimeObjective<T_Function>> = true;
         template<typename T>
         inline constexpr bool isElapsedTimeMetric = false;
         template<>
         inline constexpr bool isElapsedTimeMetric<metric::Timing> = true;
         template<>
         inline constexpr bool isElapsedTimeMetric<metric::ElapsedTime> = true;
-        template<typename Function>
-        inline constexpr bool isElapsedTimeMetric<metric::ElapsedTimeObjective<Function>> = true;
+        template<typename T_Function>
+        inline constexpr bool isElapsedTimeMetric<metric::ElapsedTimeObjective<T_Function>> = true;
         // Specialize before inspecting the callable, so timing/scalar policies never
         // instantiate an expression referring to a nonexistent function member.
-        template<typename Policy, typename... Values>
+        template<typename T_Policy, typename... T_Values>
         inline constexpr bool acceptsMetricInputs = false;
-        template<typename Function, typename... Values>
-        inline constexpr bool acceptsMetricInputs<metric::FunctionObjective<Function>, Values...>
-            = std::is_invocable_r_v<double, Function&, Values...>;
-        template<typename Function, typename... Values>
-        inline constexpr bool acceptsMetricInputs<metric::ElapsedTimeObjective<Function>, Values...>
-            = std::is_invocable_r_v<double, Function&, Values...>;
+        template<typename T_Function, typename... T_Values>
+        inline constexpr bool acceptsMetricInputs<metric::FunctionObjective<T_Function>, T_Values...>
+            = std::is_invocable_r_v<double, T_Function&, T_Values...>;
+        template<typename T_Function, typename... T_Values>
+        inline constexpr bool acceptsMetricInputs<metric::ElapsedTimeObjective<T_Function>, T_Values...>
+            = std::is_invocable_r_v<double, T_Function&, T_Values...>;
     } // namespace detail
 
     /** @brief Select an application-provided minimization metric for a tuner.
@@ -100,14 +100,14 @@ namespace alpakaTune
      * Captures own weights/scales. Include their configuration in workload
      * identity.
      */
-    template<typename Function>
-    requires std::copy_constructible<std::decay_t<Function>>
-    [[nodiscard]] auto customMetric(std::string name, Function&& function)
+    template<typename T_Function>
+    requires std::copy_constructible<std::decay_t<T_Function>>
+    [[nodiscard]] auto customMetric(std::string name, T_Function&& function)
     {
         auto token = customMetric(std::move(name));
-        return metric::FunctionObjective<std::decay_t<Function>>{
+        return metric::FunctionObjective<std::decay_t<T_Function>>{
             std::move(token.name),
-            std::forward<Function>(function)};
+            std::forward<T_Function>(function)};
     }
 
     /** @brief Declare explicitly submitted elapsed seconds. Measurement cost hints
@@ -118,13 +118,13 @@ namespace alpakaTune
         return {std::move(token.name)};
     }
 
-    template<typename Function>
-    requires std::copy_constructible<std::decay_t<Function>>
-    [[nodiscard]] auto elapsedTimeMetric(std::string name, Function&& function)
+    template<typename T_Function>
+    requires std::copy_constructible<std::decay_t<T_Function>>
+    [[nodiscard]] auto elapsedTimeMetric(std::string name, T_Function&& function)
     {
         auto token = elapsedTimeMetric(std::move(name));
-        return metric::ElapsedTimeObjective<std::decay_t<Function>>{
+        return metric::ElapsedTimeObjective<std::decay_t<T_Function>>{
             std::move(token.name),
-            std::forward<Function>(function)};
+            std::forward<T_Function>(function)};
     }
 } // namespace alpakaTune

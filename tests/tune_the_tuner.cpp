@@ -16,8 +16,8 @@
 #include <utility>
 #include <vector>
 
-#define NumberOfInsideSteps 1000u
-#define NumberOfOutsideSteps 8u
+#define NUMBER_OF_INSIDE_STEPS 1000u
+#define NUMBER_OF_OUTSIDE_STEPS 8u
 
 namespace
 {
@@ -51,11 +51,11 @@ namespace
         return directory;
     }
 
-    template<typename Device>
+    template<typename T_Device>
     class VectorAddTuner
     {
     public:
-        VectorAddTuner(Device device, std::filesystem::path directory, alpakaTune::TunerConfig config)
+        VectorAddTuner(T_Device device, std::filesystem::path directory, alpakaTune::TunerConfig config)
             : m_device(std::move(device))
             , m_queue(alpakaTune::makeQueue(m_device, alpaka::queueKind::nonBlocking, alpakaTune::timing::enabled))
             , m_directory(std::move(directory))
@@ -97,7 +97,7 @@ namespace
                 alpaka::exec::cpuSerial,
                 "vector-add/inner");
             auto const bundle = alpaka::KernelBundle{VectorAddKernel{}, m_inputA, m_inputB, m_output, extent};
-            for(std::size_t step = 0u; step < NumberOfInsideSteps; ++step)
+            for(std::size_t step = 0u; step < NUMBER_OF_INSIDE_STEPS; ++step)
             {
                 tuner.enqueue(m_queue, m_frameSpec, bundle);
                 ++m_innerEnqueueCount;
@@ -126,7 +126,7 @@ namespace
     private:
         static constexpr Index extent{64u};
 
-        Device m_device;
+        T_Device m_device;
         ALPAKA_TYPEOF(alpakaTune::makeQueue(m_device, alpaka::queueKind::nonBlocking, alpakaTune::timing::enabled))
         m_queue;
         std::filesystem::path m_directory;
@@ -144,17 +144,17 @@ namespace
     struct TuneTheTunerKernel
     {
         template<
-            typename Accelerator,
-            typename InnerTuner,
-            typename Strategy,
-            typename QueueWindow,
-            typename ConsecutiveRuns>
+            typename T_Accelerator,
+            typename T_InnerTuner,
+            typename T_Strategy,
+            typename T_QueueWindow,
+            typename T_ConsecutiveRuns>
         ALPAKA_FN_ACC void operator()(
-            Accelerator const&,
-            InnerTuner* innerTuner,
-            Strategy strategy,
-            QueueWindow queueWindow,
-            ConsecutiveRuns consecutiveRuns) const
+            T_Accelerator const&,
+            T_InnerTuner* innerTuner,
+            T_Strategy strategy,
+            T_QueueWindow queueWindow,
+            T_ConsecutiveRuns consecutiveRuns) const
         {
 #if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
             (void) innerTuner;
@@ -183,7 +183,7 @@ TEST_CASE("a host tuner can tune the configuration of another tuner", "[integrat
             QueueConfig{.disable = false, .warmupRuns = 0u, .noiseCancellationWindow = 1u, .maxConsecutiveRuns = 1u},
         .runsPerCandidate = 10u,
         .minimumRunsPerCandidate = 1u,
-        .maximumExecutions = NumberOfInsideSteps,
+        .maximumExecutions = NUMBER_OF_INSIDE_STEPS,
         .strategy = alpakaTune::StrategyKind::exhaustive,
         .completeHistory = {.file = directory / "inner.json"}};
     VectorAddTuner innerTuner{device, directory, innerConfig};
@@ -197,7 +197,7 @@ TEST_CASE("a host tuner can tune the configuration of another tuner", "[integrat
         innerConsecutiveRuns(alpakaTune::RVals<std::size_t>{1u, 2u})};
     auto outerConfig = innerConfig;
     outerConfig.runsPerCandidate = 1u;
-    outerConfig.maximumExecutions = NumberOfOutsideSteps;
+    outerConfig.maximumExecutions = NUMBER_OF_OUTSIDE_STEPS;
     outerConfig.history.file = directory / "outer-history.json";
     outerConfig.completeHistory.file = directory / "outer-complete-history.json";
     auto outerTuner = alpakaTune::makeTuner(
@@ -215,13 +215,13 @@ TEST_CASE("a host tuner can tune the configuration of another tuner", "[integrat
         alpakaTune::markTunable(innerQueueWindow),
         alpakaTune::markTunable(innerConsecutiveRuns)};
 
-    for(std::size_t step = 0u; step < NumberOfOutsideSteps; ++step)
+    for(std::size_t step = 0u; step < NUMBER_OF_OUTSIDE_STEPS; ++step)
         outerTuner.enqueue(queue, outerFrameSpec, outerBundle);
     alpaka::onHost::wait(queue);
 
     CHECK(outerTuner.isTuningComplete());
-    CHECK(outerTuner.info().executionCount == NumberOfOutsideSteps);
-    CHECK(innerTuner.configurationCount() == NumberOfOutsideSteps);
-    CHECK(innerTuner.innerEnqueueCount() == NumberOfOutsideSteps * NumberOfInsideSteps);
+    CHECK(outerTuner.info().executionCount == NUMBER_OF_OUTSIDE_STEPS);
+    CHECK(innerTuner.configurationCount() == NUMBER_OF_OUTSIDE_STEPS);
+    CHECK(innerTuner.innerEnqueueCount() == NUMBER_OF_OUTSIDE_STEPS * NUMBER_OF_INSIDE_STEPS);
     CHECK(innerTuner.resultIsCorrect());
 }

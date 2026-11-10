@@ -402,10 +402,10 @@ TEST_CASE(
 
 namespace
 {
-    template<typename Queue>
+    template<typename T_Queue>
     struct CountedQueue
     {
-        Queue queue;
+        T_Queue queue;
         mutable std::size_t events{};
         mutable std::size_t kernels{};
 

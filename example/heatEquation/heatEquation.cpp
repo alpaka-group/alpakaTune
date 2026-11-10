@@ -310,9 +310,9 @@ namespace alpakaTune::benchmarks::heatEquation
             p.dt};
     }
 
-    template<Index Variant>
+    template<Index T_variant>
     void launch(
-        std::integral_constant<Index, Variant>,
+        std::integral_constant<Index, T_variant>,
         Choice choice,
         Index sms,
         auto const& queue,
@@ -321,42 +321,42 @@ namespace alpakaTune::benchmarks::heatEquation
         alpaka::concepts::IBuffer auto& output,
         Parameters p)
     {
-        if constexpr(Variant == 0u)
+        if constexpr(T_variant == 0u)
         {
             queue.enqueue(originalFrame(p.size, executor), originalBundle(input, output, p));
         }
         else
         {
-            static constexpr auto layout = layouts[Variant];
+            static constexpr auto layout = layouts[T_variant];
             auto const threads = alpaka::exec::isSeqExecutor_v<ALPAKA_TYPEOF(executor)>
                                      ? Vec{1u, 1u}
                                      : Vec{layout.threadsY, layout.threadsX};
             queue.enqueue(
                 alpaka::onHost::ThreadSpec{Vec{1u, gridBlocks(choice, p.size, sms)}, threads, executor},
-                alpaka::KernelBundle{TunedStencil{}, input, output, p, std::integral_constant<Index, Variant>{}});
+                alpaka::KernelBundle{TunedStencil{}, input, output, p, std::integral_constant<Index, T_variant>{}});
         }
     }
 
 #if !ALPAKA_TUNE_HEAT_REPLAY
-    template<Index Variant = 0u, typename Function>
-    decltype(auto) dispatch(Index variant, Function&& function)
+    template<Index T_variant = 0u, typename T_Function>
+    decltype(auto) dispatch(Index variant, T_Function&& function)
     {
-        if(variant == Variant)
-            return function(std::integral_constant<Index, Variant>{});
-        if constexpr(Variant + 1u < layouts.size())
-            return dispatch<Variant + 1u>(variant, std::forward<Function>(function));
+        if(variant == T_variant)
+            return function(std::integral_constant<Index, T_variant>{});
+        if constexpr(T_variant + 1u < layouts.size())
+            return dispatch<T_variant + 1u>(variant, std::forward<T_Function>(function));
         else
             throw std::out_of_range{"Unknown stencil variant"};
     }
 #else
-    template<std::size_t Row = 0u, typename Function>
-    void dispatchSelected(Index size, Function&& function)
+    template<std::size_t T_row = 0u, typename T_Function>
+    void dispatchSelected(Index size, T_Function&& function)
     {
-        static constexpr auto selected = selectedWinners[Row];
+        static constexpr auto selected = selectedWinners[T_row];
         if(selected.size == size)
             function(std::integral_constant<Index, selected.variant>{}, Choice{selected.variant, selected.gridPolicy});
-        else if constexpr(Row + 1u < selectedWinners.size())
-            dispatchSelected<Row + 1u>(size, std::forward<Function>(function));
+        else if constexpr(T_row + 1u < selectedWinners.size())
+            dispatchSelected<T_row + 1u>(size, std::forward<T_Function>(function));
         else
             throw std::invalid_argument{"No inserted winner for requested size"};
     }
@@ -737,9 +737,9 @@ namespace alpakaTune::benchmarks::heatEquation
     }
 #endif
 
-    template<Index Variant>
+    template<Index T_variant>
     void evaluate(
-        std::integral_constant<Index, Variant> variant,
+        std::integral_constant<Index, T_variant> variant,
         Choice choice,
         alpaka::onHost::concepts::Device auto& device,
         auto const& queue,

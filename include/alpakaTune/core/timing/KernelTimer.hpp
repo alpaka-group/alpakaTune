@@ -14,11 +14,11 @@ namespace alpakaTune::detail::timing
 {
 
     /** Measure one kernel with alpaka timing events on a tagged queue. */
-    template<alpaka::onHost::concepts::Device Device>
+    template<alpaka::onHost::concepts::Device T_Device>
     class KernelTimer
     {
     public:
-        explicit KernelTimer(Device& device)
+        explicit KernelTimer(T_Device& device)
             : m_start(device.makeEvent(alpaka::timing::enabled))
             , m_end(device.makeEvent(alpaka::timing::enabled))
         {
@@ -26,7 +26,7 @@ namespace alpakaTune::detail::timing
 
         [[nodiscard]] static constexpr auto measurementSource() noexcept -> RuntimeMeasurementSource
         {
-            if constexpr(std::same_as<ALPAKA_TYPEOF(std::declval<Device>().getApi()), alpaka::api::Host>)
+            if constexpr(std::same_as<ALPAKA_TYPEOF(std::declval<T_Device>().getApi()), alpaka::api::Host>)
                 return RuntimeMeasurementSource::hostClock;
             else
                 return RuntimeMeasurementSource::deviceEvent;
@@ -47,9 +47,9 @@ namespace alpakaTune::detail::timing
         }
 
     private:
-        ALPAKA_TYPEOF(std::declval<Device&>().makeEvent(alpaka::timing::enabled))
+        ALPAKA_TYPEOF(std::declval<T_Device&>().makeEvent(alpaka::timing::enabled))
         m_start;
-        ALPAKA_TYPEOF(std::declval<Device&>().makeEvent(alpaka::timing::enabled))
+        ALPAKA_TYPEOF(std::declval<T_Device&>().makeEvent(alpaka::timing::enabled))
         m_end;
     };
 

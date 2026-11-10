@@ -20,7 +20,7 @@ using namespace alpaka;
 auto validateResult(auto const& bufHostC, auto const& bufHostA, auto const& bufHostB, std::size_t extent) -> int
 {
     using Data = uint32_t;
-    static constexpr int MAX_PRINT_FALSE_RESULTS = 20;
+    static constexpr int maxPrintFalseResults = 20;
     int falseResults = 0;
     for(std::size_t i(0u); i < extent; ++i)
     {
@@ -28,7 +28,7 @@ auto validateResult(auto const& bufHostC, auto const& bufHostA, auto const& bufH
         Data const correctResult(bufHostA[i] + bufHostB[i]);
         if(val != correctResult)
         {
-            if(falseResults < MAX_PRINT_FALSE_RESULTS)
+            if(falseResults < maxPrintFalseResults)
                 std::cerr << "C[" << i << "] == " << val << " != " << correctResult << std::endl;
             ++falseResults;
         }
@@ -37,7 +37,7 @@ auto validateResult(auto const& bufHostC, auto const& bufHostA, auto const& bufH
     if(falseResults == 0)
         return EXIT_SUCCESS;
 
-    std::cout << "Found " << falseResults << " false results, printed no more than " << MAX_PRINT_FALSE_RESULTS << "\n"
+    std::cout << "Found " << falseResults << " false results, printed no more than " << maxPrintFalseResults << "\n"
               << "Execution results incorrect!" << std::endl;
     std::cout << std::endl;
     return EXIT_FAILURE;
@@ -58,9 +58,9 @@ public:
     //! \param numElements The number of elements.
     ALPAKA_FN_ACC auto operator()(
         auto const& acc,
-        alpaka::concepts::IMdSpan auto const A,
-        alpaka::concepts::IMdSpan auto const B,
-        alpaka::concepts::IMdSpan auto C,
+        alpaka::concepts::IMdSpan auto const a,
+        alpaka::concepts::IMdSpan auto const b,
+        alpaka::concepts::IMdSpan auto c,
         auto const& numElements) const -> void
     {
         using namespace alpaka;
@@ -72,9 +72,9 @@ public:
             numElements,
             [&](auto const&, auto&& simdA, auto&& simdB, auto&& simdC) constexpr
             { simdC = simdA.load() + simdB.load(); },
-            A,
-            B,
-            C);
+            a,
+            b,
+            c);
     }
 };
 

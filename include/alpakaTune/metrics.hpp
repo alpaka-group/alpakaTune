@@ -16,11 +16,11 @@ namespace alpakaTune::metrics
 {
 
     /** Stable handle tied to the tuner execution that produced it. */
-    template<typename Tuner>
+    template<typename T_Tuner>
     class MeasuredLaunch
     {
     public:
-        MeasuredLaunch(Tuner const& tuner, std::size_t executionIndex, alpakaMetrics::Measurement measurement)
+        MeasuredLaunch(T_Tuner const& tuner, std::size_t executionIndex, alpakaMetrics::Measurement measurement)
             : m_tuner(std::addressof(tuner))
             , m_executionIndex(executionIndex)
             , m_measurement(std::move(measurement))
@@ -37,7 +37,7 @@ namespace alpakaTune::metrics
             return m_measurement.getId();
         }
 
-        void validate(Tuner const& tuner) const
+        void validate(T_Tuner const& tuner) const
         {
             if(m_tuner != std::addressof(tuner) || tuner.history().empty()
                || tuner.lastConfig().executionIndex != m_executionIndex)
@@ -45,17 +45,17 @@ namespace alpakaTune::metrics
         }
 
     private:
-        Tuner const* m_tuner;
+        T_Tuner const* m_tuner;
         std::size_t m_executionIndex;
         alpakaMetrics::Measurement m_measurement;
     };
 
     /** Submit exactly one selected kernel through the configured metrics queue. */
-    template<typename Tuner, typename Queue>
-    requires(Tuner::usesCustomMetric)
+    template<typename T_Tuner, typename T_Queue>
+    requires(T_Tuner::usesCustomMetric)
     [[nodiscard]] auto enqueue(
-        Tuner& tuner,
-        alpakaMetrics::Queue<Queue> const& queue,
+        T_Tuner& tuner,
+        alpakaMetrics::Queue<T_Queue> const& queue,
         alpaka::onHost::concepts::ThreadOrFrameSpec auto const& spec,
         alpaka::concepts::KernelBundle auto const& bundle)
     {
@@ -64,14 +64,14 @@ namespace alpakaTune::metrics
         tuner.enqueue(capturingQueue, spec, bundle);
         if(!measurement)
             throw std::logic_error{"Tuner launch did not produce a measurement"};
-        return MeasuredLaunch<Tuner>{tuner, tuner.lastConfig().executionIndex, std::move(*measurement)};
+        return MeasuredLaunch<T_Tuner>{tuner, tuner.lastConfig().executionIndex, std::move(*measurement)};
     }
 
     /** Explicitly complete and score the latest measurement; no automatic fallback.
      */
-    template<typename Tuner>
-    requires requires(Tuner& tuner, alpakaMetrics::Result const& result) { tuner.provideMetrics(result); }
-    void provideMetrics(Tuner& tuner, MeasuredLaunch<Tuner> const& launch)
+    template<typename T_Tuner>
+    requires requires(T_Tuner& tuner, alpakaMetrics::Result const& result) { tuner.provideMetrics(result); }
+    void provideMetrics(T_Tuner& tuner, MeasuredLaunch<T_Tuner> const& launch)
     {
         launch.validate(tuner);
         tuner.provideMetrics(launch.getResults());
@@ -85,14 +85,14 @@ namespace alpakaTune::metrics
  * customMetric() objective, and clears the queue's retained measurements. A
  * tuner using the default runtime metric times the launch as usual.
  */
-template<typename Queue>
-struct alpakaTune::plugin::Enqueue<alpakaMetrics::Queue<Queue>>
+template<typename T_Queue>
+struct alpakaTune::plugin::Enqueue<alpakaMetrics::Queue<T_Queue>>
 {
     static constexpr bool enabled = true;
 
     static void enqueue(
         auto& tuner,
-        alpakaMetrics::Queue<Queue> const& queue,
+        alpakaMetrics::Queue<T_Queue> const& queue,
         auto const& spec,
         auto const& kernelBundle)
     {

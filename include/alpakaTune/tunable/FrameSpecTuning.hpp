@@ -480,28 +480,28 @@ namespace alpakaTune
 
     namespace detail
     {
-        template<FixedString Name, std::size_t I = 0u, typename Default, typename Tuple>
-        auto selectLaunchOverride(Default fallback, Tuple const& choices)
+        template<FixedString T_name, std::size_t I = 0u, typename T_Default, typename T_Tuple>
+        auto selectLaunchOverride(T_Default fallback, T_Tuple const& choices)
         {
-            if constexpr(I == std::tuple_size_v<Tuple>)
+            if constexpr(I == std::tuple_size_v<T_Tuple>)
                 return fallback;
             else
             {
-                using Entry = std::remove_cvref_t<std::tuple_element_t<I, Tuple>>;
-                if constexpr(sameName<Entry::name, Name>)
+                using Entry = std::remove_cvref_t<std::tuple_element_t<I, T_Tuple>>;
+                if constexpr(sameName<Entry::name, T_name>)
                     return std::get<I>(choices);
                 else
-                    return selectLaunchOverride<Name, I + 1u>(std::move(fallback), choices);
+                    return selectLaunchOverride<T_name, I + 1u>(std::move(fallback), choices);
             }
         }
 
-        template<FixedString Name, typename Default, typename... Overrides>
-        auto launchOverride(Default fallback, Overrides const&... overrides)
+        template<FixedString T_name, typename T_Default, typename... T_Overrides>
+        auto launchOverride(T_Default fallback, T_Overrides const&... overrides)
         {
             static_assert(
-                (std::size_t{} + ... + (sameName<Overrides::name, Name> ? 1u : 0u)) <= 1u,
+                (std::size_t{} + ... + (sameName<T_Overrides::name, T_name> ? 1u : 0u)) <= 1u,
                 "A launch parameter can only be overridden once.");
-            return selectLaunchOverride<Name>(std::move(fallback), std::tie(overrides...));
+            return selectLaunchOverride<T_name>(std::move(fallback), std::tie(overrides...));
         }
 
         // Each component contributes alternatives without materializing their product.
@@ -544,14 +544,14 @@ namespace alpakaTune
     } // namespace detail
 
     /** Automatic FrameSpec domains preserving each axis's original coverage. */
-    template<typename... Overrides>
+    template<typename... T_Overrides>
     [[nodiscard]] auto makeAutomaticLaunchTuning(
         alpaka::onHost::concepts::FrameSpec auto const& spec,
-        Overrides const&... overrides)
+        T_Overrides const&... overrides)
     {
         static_assert(
-            ((detail::sameName<Overrides::name, detail::frameExtentName>
-              || detail::sameName<Overrides::name, detail::numFramesName>)
+            ((detail::sameName<T_Overrides::name, detail::frameExtentName>
+              || detail::sameName<T_Overrides::name, detail::numFramesName>)
              && ...),
             "FrameSpec overrides must name frameExtent or numFrames.");
         auto [extentValues, countValues]
@@ -564,14 +564,14 @@ namespace alpakaTune
 
     /** Automatic ThreadSpec domains, checked against the selected executor and
      * device at first enqueue. */
-    template<typename... Overrides>
+    template<typename... T_Overrides>
     [[nodiscard]] auto makeAutomaticLaunchTuning(
         alpaka::onHost::concepts::ThreadSpec auto const& spec,
-        Overrides const&... overrides)
+        T_Overrides const&... overrides)
     {
         static_assert(
-            ((detail::sameName<Overrides::name, detail::numThreadsName>
-              || detail::sameName<Overrides::name, detail::numBlocksName>)
+            ((detail::sameName<T_Overrides::name, detail::numThreadsName>
+              || detail::sameName<T_Overrides::name, detail::numBlocksName>)
              && ...),
             "ThreadSpec overrides must name numThreads or numBlocks.");
         auto [threadValues, blockValues] = detail::automaticGeometry(
