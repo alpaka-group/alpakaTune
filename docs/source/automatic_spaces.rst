@@ -23,8 +23,8 @@ The same helper accepts a ``ThreadSpec``. A ``FrameSpec`` exposes
 **each axis**, include the original geometry, and propose power-of-two
 alternatives. The tuner checks the actual derived thread geometry against the
 selected device's total and per-axis limits, the executor's thread support,
-and Alpaka's dynamic shared-memory query before registering candidates.
-This uses the pinned Alpaka API and requires no Alpaka changes.
+and alpaka's dynamic shared-memory query before registering candidates.
+This uses the pinned alpaka API and requires no alpaka changes.
 
 Override one parameter when you know more about the kernel::
 

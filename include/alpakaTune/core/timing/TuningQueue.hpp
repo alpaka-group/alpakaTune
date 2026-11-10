@@ -12,9 +12,9 @@
 namespace alpakaTune {
 
 /**
- * Construct an Alpaka queue with an explicit timing policy.
+ * Construct an alpaka queue with an explicit timing policy.
  *
- * @note This source-compatible forwarding factory uses Alpaka's public tagged
+ * @note This source-compatible forwarding factory uses alpaka's public tagged
  * queue interface. New code may call device.makeQueue() directly.
  */
 [[nodiscard]] inline auto

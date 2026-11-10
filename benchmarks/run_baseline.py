@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the unmodified Alpaka examples as an instrumentation-free baseline."""
+"""Run the unmodified alpaka examples as an instrumentation-free baseline."""
 
 from __future__ import annotations
 
@@ -98,7 +98,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--build-dir",
         type=Path,
         default=repository / "build/alpaka-baseline",
-        help="build directory configured from Alpaka's source tree",
+        help="build directory configured from alpaka's source tree",
     )
     parser.add_argument("--output", type=Path)
     parser.add_argument(
@@ -208,7 +208,7 @@ def main() -> int:
             "repetitions": arguments.repetitions,
             "created_at": utc_now().isoformat(),
             "note": (
-                "These are the upstream Alpaka examples with no alpakaTune context. "
+                "These are the upstream alpaka examples with no alpakaTune context. "
                 "Enabled backends are determined by the baseline CMake configuration."
             ),
         },

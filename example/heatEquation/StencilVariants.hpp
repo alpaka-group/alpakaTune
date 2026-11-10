@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 
-// The baseline comes directly from the configured alpaka3 source tree.
+// The baseline comes directly from the configured alpaka source tree.
 #include <alpaka/alpaka.hpp>
 #include <heatEquation2D/src/StencilKernel.hpp>
 

@@ -31,7 +31,7 @@ hasDefaultExtentProperties(alpaka::concepts::Vector auto const &extent)
   if (std::ranges::find(expected, elements) == expected.end())
     return false;
 
-  // Alpaka linearizes the final dimension fastest. The generated extent puts
+  // alpaka linearizes the final dimension fastest. The generated extent puts
   // its largest component there, and mapToND advances it first.
   auto const mapped = alpaka::mapToND(extent, ALPAKA_TYPEOF(extent[0u]){1u});
   return mapped[ALPAKA_TYPEOF(extent)::dim() - 1u] ==

@@ -4,8 +4,8 @@ Your first tuner
 Tune the batch size of a kernel that adds one to each array element.
 The example runs on the host CPU and needs CMake 3.25+, a C++20 compiler,
 and Git. CMake fetches the pinned dependencies.
-For Alpaka basics, see the `getting-started tutorial
-<https://alpaka3.readthedocs.io/en/latest/tutorial/motivation.html>`_.
+For alpaka basics, see the `getting-started tutorial
+<https://alpaka.readthedocs.io/en/latest/tutorial/motivation.html>`_.
 
 Build and run
 -------------
@@ -67,7 +67,7 @@ FetchContent adds the dependency and its exported target:
    include(FetchContent)
    FetchContent_Declare(
      alpakaTune
-     GIT_REPOSITORY https://github.com/TimHanel00/alpaka3-tuner.git
+     GIT_REPOSITORY https://github.com/TimHanel00/alpakaTune.git
      GIT_TAG dev)
    FetchContent_MakeAvailable(alpakaTune)
    add_executable(my_app main.cpp)
@@ -75,9 +75,9 @@ FetchContent adds the dependency and its exported target:
    alpaka_finalize(my_app)
 
 ``dev`` follows development; replace it with a tested commit for reproducible
-builds. With a local checkout, ``add_subdirectory(path/to/alpaka3-tuner)`` can
+builds. With a local checkout, ``add_subdirectory(path/to/alpakaTune)`` can
 replace FetchContent. On ``dev``, an existing ``alpaka::alpaka`` target is
-reused; otherwise the tuner fetches its pinned Alpaka revision.
+reused; otherwise the tuner fetches its pinned alpaka revision.
 
 For an installed package, replace the FetchContent block with
 ``find_package(alpakaTune CONFIG REQUIRED)``. Keep the link and finalization
@@ -94,7 +94,7 @@ externally supplied dependencies must also be discoverable by the consumer.
 The tutorial CMake project tries an installed package first, so you can test it
 with ``-DCMAKE_PREFIX_PATH="$PWD/install"`` in a fresh build directory.
 
-Every target using Alpaka headers must call ``alpaka_finalize`` after linking.
+Every target using alpaka headers must call ``alpaka_finalize`` after linking.
 Include ``<alpakaTune/alpakaTune.hpp>`` in your source.
 
 Next, try :doc:`history_workflows` with this same executable. You can replay
@@ -111,7 +111,7 @@ The README example visits every available device for each enabled executor.
 For each combination it increments one device buffer in place, using a launch
 specification derived from the buffer extent, device, and executor. Across
 launches, the tuner explores different frame counts and frame extents and uses
-measured runtimes to guide later configuration choices. alpaka3 maps each
+measured runtimes to guide later configuration choices. alpaka maps each
 selected ``FrameSpec`` to thread blocks and threads according to the device
 and executor.
 From the repository root:
@@ -125,7 +125,7 @@ From the repository root:
 For each device/executor combination, the program increments a buffer of 1024
 elements over 100 tuned launches. The enabled backends depend on the alpaka
 CMake options in your build; see the `alpaka backend configuration
-<https://alpaka3.readthedocs.io/en/latest/advanced/cmake.html>`_.
+<https://alpaka.readthedocs.io/en/latest/advanced/cmake.html>`_.
 A short-kernel warning is expected for this small workload.
 ``makeTuner(tunables, device)`` loads the process-default YAML configuration;
 set ``ALPAKA_TUNE_CONFIG`` before starting the program to use a different policy.

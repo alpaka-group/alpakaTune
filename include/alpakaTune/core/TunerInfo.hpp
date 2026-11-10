@@ -110,7 +110,7 @@ struct ExecutionRuntimeSummary {
 
 /** @brief Clock source used for synchronized kernel runtime observations. */
 enum class RuntimeMeasurementSource {
-  hostClock,   ///< Host wall clock around a synchronized Alpaka launch.
+  hostClock,   ///< Host wall clock around a synchronized alpaka launch.
   deviceEvent, ///< Backend device-event timestamps around the kernel.
 };
 

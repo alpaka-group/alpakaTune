@@ -36,7 +36,7 @@ in ``[0, 1]`` per tuning dimension. A strategy receives a read-only
 * ``runtimeFor(configuration)`` returns a read-only ``RuntimeObservation``, if
   that normalized configuration has already been sampled.
 
-The strategy object owns all other state. It does not access the Alpaka queue,
+The strategy object owns all other state. It does not access the alpaka queue,
 kernel, device, cache, or tuning internals. ``Tuner`` validates the returned
 vector, maps it once to the nearest discrete Cartesian candidate, applies
 mandatory constraints and the optional horizon gates, and then either queues

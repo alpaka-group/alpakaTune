@@ -38,3 +38,12 @@ repos:
       args: [-c, --diff]
     - id: gersemi
       args: [-i]
+- repo: local
+  hooks:
+    - id: project-naming
+      name: "Check project naming (alpaka, alpakaTune)"
+      language: pygrep
+      # The Read the Docs project keeps its original slug; api::Alpaka is an alpaka identifier.
+      entry: 'alpaka3(?!-tuner\.readthedocs\.io)|Alpaka3|ALPAKA3|(?<!api::)\bAlpaka\b|alpaka[-_]tuner|alpakaTuner'
+      types: [text]
+      exclude: ^\.pre-commit-config\.yaml$

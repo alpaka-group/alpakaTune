@@ -90,7 +90,7 @@ auto parseOptions(int argc, char **argv) -> Options {
     else if (name == "--self-test")
       options.selfTest = true;
     else if (name == "--help") {
-      std::cout << "FP64 heat equation: alpaka3 default and compiled tuning\n"
+      std::cout << "FP64 heat equation: alpaka default and compiled tuning\n"
                    "--backend api:deviceKind --executor NAME --device INDEX\n"
                    "--size N (repeatable) --samples-per-candidate N\n"
                    "--repetitions N --steps N --seed N --csv FILE\n"

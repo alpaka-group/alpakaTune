@@ -12,7 +12,7 @@
 
 namespace alpakaTune::detail::timing {
 
-/** Measure one kernel with Alpaka timing events on a tagged queue. */
+/** Measure one kernel with alpaka timing events on a tagged queue. */
 template <alpaka::onHost::concepts::Device Device> class KernelTimer {
 public:
   explicit KernelTimer(Device &device)

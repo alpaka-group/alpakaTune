@@ -226,7 +226,7 @@ preserveCoverage(alpaka::onHost::concepts::FrameSpec auto const &frameSpec) {
  *
  * Multidimensional extents contain every power-of-two factorization of each
  * element count. Components are nondecreasing, placing the largest component
- * in Alpaka's final and fastest-varying index. The original extent is retained
+ * in alpaka's final and fastest-varying index. The original extent is retained
  * as a fallback for small or otherwise nonstandard launch prototypes.
  */
 [[nodiscard]] auto defaultFrameExtentCandidates(
@@ -285,7 +285,7 @@ preserveCoverage(alpaka::onHost::concepts::FrameSpec auto const &frameSpec) {
  * level inserts the integer midpoint between adjacent values; one level keeps
  * the original default, while three levels approximate eighth-interval spacing
  * between successive halvings. Multidimensional candidates are their Cartesian
- * product, with the final Alpaka index varying fastest.
+ * product, with the final alpaka index varying fastest.
  */
 [[nodiscard]] auto
 defaultNumFramesCandidates(alpaka::concepts::Vector auto const &upperLimitValue,

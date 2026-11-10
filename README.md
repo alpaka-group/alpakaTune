@@ -1,6 +1,6 @@
 # alpakaTune
 
-alpakaTune is a header-only C++20 library for tuning alpaka3 kernels.
+alpakaTune is a header-only C++20 library for tuning alpaka kernels.
 It measures candidate launch shapes and kernel parameters, then uses those
 measurements to choose configurations for later launches.
 
@@ -70,9 +70,9 @@ int main() {
 the extent of each frame. Each `tuner.enqueue(...)` selects a launch configuration
 and runs the kernel once. Across launches, the tuner explores these combinations
 and reuses promising configurations based on measured runtimes.
-alpaka3 maps the selected `FrameSpec` to thread blocks and threads according to
+alpaka maps the selected `FrameSpec` to thread blocks and threads according to
 the device and executor; `makeIdxMap` covers every buffer element across these
-configurations. See [alpaka3 kernel launching](https://alpaka3.readthedocs.io/en/latest/tutorial/kernel.html#launching-the-kernel)
+configurations. See [alpaka kernel launching](https://alpaka.readthedocs.io/en/latest/tutorial/kernel.html#launching-the-kernel)
 for the mapping.
 
 `makeTuner(tunables, device)` loads the process-default YAML configuration.

@@ -2,7 +2,7 @@
 
 This example computes a row-major `M x K` by `K x N` single-precision matrix
 multiplication. It uses a two-level output tile, cooperatively loaded shared-memory
-tiles, register accumulators, and Alpaka `Simd` packs. The independently tunable
+tiles, register accumulators, and alpaka `Simd` packs. The independently tunable
 compile-time parameters are:
 
 - `blockRows` and `blockColumns`: the two output-tile directions;

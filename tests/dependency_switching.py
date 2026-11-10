@@ -1,6 +1,6 @@
 # Copyright 2026 Tim Hanel
 # SPDX-License-Identifier: MPL-2.0
-"""Offline CMake regression: the tuner owns Alpaka, metrics reuses it."""
+"""Offline CMake regression: the tuner owns alpaka, metrics reuses it."""
 
 import pathlib
 import subprocess
@@ -32,7 +32,7 @@ target_include_directories(alpaka INTERFACE "${{CMAKE_CURRENT_SOURCE_DIR}}")
 set_property(TARGET alpaka PROPERTY TEST_OWNER "{owner}")
 """
             )
-        # The fake metrics project mirrors alpakaMetrics: it only fetches Alpaka
+        # The fake metrics project mirrors alpakaMetrics: it only fetches alpaka
         # when no alpaka::alpaka target exists, so it must reuse the tuner's.
         metrics = directory / "metrics_project"
         metrics.mkdir()
@@ -46,7 +46,7 @@ if(NOT FETCHCONTENT_BASE_DIR MATCHES "/_deps/metrics$")
   message(FATAL_ERROR "Metrics dependencies must have a separate directory")
 endif()
 if(NOT TARGET alpaka::alpaka)
-  message(FATAL_ERROR "Metrics must reuse the tuner's Alpaka")
+  message(FATAL_ERROR "Metrics must reuse the tuner's alpaka")
 endif()
 add_library(metrics INTERFACE)
 add_library(alpakaMetrics::alpakaMetrics ALIAS metrics)
@@ -66,7 +66,7 @@ include("{ROOT / 'cmake/Dependencies.cmake'}")
 get_target_property(owner alpaka TEST_OWNER)
 set(expected 1)
 if(NOT owner STREQUAL "standalone")
-  message(FATAL_ERROR "The tuner did not own Alpaka")
+  message(FATAL_ERROR "The tuner did not own alpaka")
 endif()
 if(alpakaTune_DEP_METRICS AND NOT TARGET alpakaMetrics::alpakaMetrics)
   message(FATAL_ERROR "Enabled metrics was not active")
@@ -84,13 +84,13 @@ target_link_libraries(consumer PRIVATE alpaka::alpaka)
             run(
                 "cmake", "-S", str(project), "-B", str(build), "-G", "Ninja",
                 f"-DalpakaTune_DEP_METRICS={enabled}",
-                f"-DFETCHCONTENT_SOURCE_DIR_ALPAKA3={directory / 'standalone'}",
+                f"-DFETCHCONTENT_SOURCE_DIR_ALPAKA={directory / 'standalone'}",
                 f"-DFETCHCONTENT_SOURCE_DIR_ALPAKAMETRICS={metrics}",
                 "-DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=ALWAYS",
             )
             run("cmake", "--build", str(build))
             run(str(build / "consumer"))
-    print("OFF -> ON -> OFF -> ON rebuilt with the tuner's Alpaka")
+    print("OFF -> ON -> OFF -> ON rebuilt with the tuner's alpaka")
 
 
 if __name__ == "__main__":

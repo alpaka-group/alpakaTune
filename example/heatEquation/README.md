@@ -1,6 +1,6 @@
 # Heat-equation stencil tuning
 
-Tune the original alpaka3 FP64 five-point stencil and export compile-time
+Tune the original alpaka FP64 five-point stencil and export compile-time
 specializations. Every path uses the same equation, coefficients, precision,
 and original boundary kernel. The search and compiled-winner replay are
 separate executables.
