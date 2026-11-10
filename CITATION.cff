@@ -1,0 +1,66 @@
+cff-version: "1.2.0"
+message: "If you use alpakaTune in research, please cite the software and the related publications listed here."
+title: "alpakaTune"
+type: "software"
+authors:
+  - family-names: "Hanel"
+    given-names: "Tim"
+    orcid: "https://orcid.org/0009-0008-6324-3946"
+    affiliation: "Helmholtz-Zentrum Dresden-Rossendorf, TU Dresden"
+license: "MPL-2.0"
+repository-code: "https://github.com/TimHanel00/alpakaTune"
+url: "https://github.com/TimHanel00/alpakaTune"
+version: "3.0.0"
+abstract: "A header-only C++20 library for tuning launch shapes and kernel parameters of alpaka kernels at run time and compile time."
+keywords:
+  - "alpaka"
+  - "autotuning"
+  - "parameter optimization"
+  - "heterogeneous computing"
+  - "performance portability"
+preferred-citation:
+  type: "thesis"
+  title: "Performance Optimization in Accelerator Libraries using Parameter-Tuning"
+  authors:
+    - family-names: "Hanel"
+      given-names: "Tim"
+  thesis-type: "Master thesis"
+  institution:
+    name: "TU Dresden"
+  year: 2025
+  pages: 98
+  doi: "10.5281/zenodo.16903936"
+  url: "https://www.hzdr.de/publications/Publ-41733"
+references:
+  - type: "conference-paper"
+    title: "Alpaka - An Abstraction Library for Parallel Kernel Acceleration"
+    authors:
+      - family-names: "Zenker"
+        given-names: "Erik"
+      - family-names: "Worpitz"
+        given-names: "Benjamin"
+      - family-names: "Widera"
+        given-names: "René"
+      - family-names: "Huebl"
+        given-names: "Axel"
+      - family-names: "Juckeland"
+        given-names: "Guido"
+      - family-names: "Knüpfer"
+        given-names: "Andreas"
+      - family-names: "Nagel"
+        given-names: "Wolfgang E."
+      - family-names: "Bussmann"
+        given-names: "Michael"
+    year: 2016
+    month: 5
+    publisher:
+      name: "IEEE Computer Society"
+    doi: "10.1109/IPDPSW.2016.50"
+    start: "631"
+    end: "640"
+  - type: "software"
+    title: "alpaka: Abstraction Library for Parallel Kernel Acceleration"
+    authors:
+      - name: "alpaka contributors"
+    repository-code: "https://github.com/alpaka-group/alpaka"
+    doi: "10.5281/zenodo.49768"

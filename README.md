@@ -85,3 +85,8 @@ for this example. A dedicated test builds and runs this exact snippet.
 The [documentation](https://alpaka3-tuner.readthedocs.io/en/latest/)
 covers launch tuning, saved history, and custom objectives;
 [examples](example/README.md) show larger applications.
+
+## Citation
+
+If you use alpakaTune in research, please cite it using the metadata and publication references in
+[CITATION.cff](CITATION.cff).
