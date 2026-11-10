@@ -262,3 +262,15 @@ if(alpakaTune_DEP_METRICS)
     alpaka_finalize(alpakaTune_metric_objective_tests)
     add_test(NAME alpakaTune_metric_objective_tests COMMAND alpakaTune_metric_objective_tests)
 endif()
+
+# Install this build into a scratch prefix and build a find_package consumer against it.
+if(alpakaTune_INSTALL_TEST)
+    add_test(
+        NAME alpakaTune_install_consumer
+        COMMAND
+            ${CMAKE_COMMAND} -DBUILD_DIR=${PROJECT_BINARY_DIR} -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/install-consumer
+            -DGENERATOR=${CMAKE_GENERATOR} -DCXX_COMPILER=${CMAKE_CXX_COMPILER} -DBUILD_TYPE=${CMAKE_BUILD_TYPE} -P
+            ${CMAKE_CURRENT_SOURCE_DIR}/install_consumer/run.cmake
+    )
+    set_tests_properties(alpakaTune_install_consumer PROPERTIES LABELS integration TIMEOUT 600)
+endif()
