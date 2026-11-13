@@ -282,3 +282,11 @@ if(alpakaTune_INSTALL_TEST)
     )
     set_tests_properties(alpakaTune_install_consumer PROPERTIES LABELS integration TIMEOUT 600)
 endif()
+
+# Regression tests of fixed defects.
+add_executable(alpakaTune_regression_tests regressions.cpp)
+target_link_libraries(alpakaTune_regression_tests PRIVATE alpakaTune::alpakaTune Catch2::Catch2WithMain)
+# Checked libstdc++ accesses turn the read of an empty optional into an abort.
+target_compile_definitions(alpakaTune_regression_tests PRIVATE _GLIBCXX_ASSERTIONS)
+alpaka_finalize(alpakaTune_regression_tests)
+add_test(NAME alpakaTune_regression_tests COMMAND alpakaTune_regression_tests)

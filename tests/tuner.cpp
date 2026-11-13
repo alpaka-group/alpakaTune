@@ -589,14 +589,16 @@ auto main() -> int
     {
         retryLimitThrew = true;
     }
+    // A proposal revealing an illegal candidate is not a strategy retry, so all six candidates are rejected and
+    // exploration ends without a valid configuration instead of at the retry limit.
     auto const retryLimitInfo = retryLimitTuner.info();
     if(!retryLimitThrew || !retryLimitTuner.isTuningComplete() || !retryLimitTuner.completed()
-       || retryLimitTuner.completionReason() != alpakaTune::TunerCompletionReason::maximumConsecutiveStrategyRetries
-       || retryLimitInfo.maximumConsecutiveStrategyRetries != 3u || retryLimitInfo.consecutiveStrategyRetries != 3u
-       || retryLimitInfo.strategyRetryLimitReachedCount != 1u || retryLimitInfo.adaptiveRetryFallbackCount != 0u
-       || retryLimitInfo.restrictionRejectedCount != 3u || retryLimitInfo.bestCandidateIndex
-       || !retryLimitInfo.completionReason
-       || *retryLimitInfo.completionReason != alpakaTune::TunerCompletionReason::maximumConsecutiveStrategyRetries)
+       || retryLimitTuner.completionReason() != alpakaTune::TunerCompletionReason::noValidConfiguration
+       || retryLimitInfo.maximumConsecutiveStrategyRetries != 3u || retryLimitInfo.consecutiveStrategyRetries != 0u
+       || retryLimitInfo.strategyRetryLimitReachedCount != 0u || retryLimitInfo.adaptiveRetryFallbackCount != 0u
+       || retryLimitInfo.restrictionRejectedCount != 6u || retryLimitInfo.rejectedCandidateCount != 6u
+       || retryLimitInfo.bestCandidateIndex || !retryLimitInfo.completionReason
+       || *retryLimitInfo.completionReason != alpakaTune::TunerCompletionReason::noValidConfiguration)
         return EXIT_FAILURE;
 
     auto adaptiveRetryConfig = retryLimitConfig;
