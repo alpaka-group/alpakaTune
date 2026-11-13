@@ -139,6 +139,13 @@ namespace alpakaTune
         static constexpr std::size_t acquisitionSamples = 128u;
         static constexpr double lengthScale = 0.35;
         static constexpr double noise = 1.0e-9;
+        /** Pivot magnitude below which the regularized kernel matrix counts as singular.
+         *
+         * The matrix is a positive semidefinite kernel plus noise on its diagonal, so its exact pivots are at
+         * least noise. Close observations bring a pivot down to that bound, where rounding decides on which
+         * side of it the computed value falls; only a pivot well below it shows a broken matrix.
+         */
+        static constexpr double singularPivot = noise / 2.0;
         static constexpr double exploration = 0.35;
 
         [[nodiscard]] auto randomConfiguration(std::size_t dimensions) -> ParameterConfiguration
@@ -187,7 +194,7 @@ namespace alpakaTune
                     if(std::abs(matrix[row * size + pivot]) > std::abs(matrix[selected * size + pivot]))
                         selected = row;
                 }
-                if(std::abs(matrix[selected * size + pivot]) < noise)
+                if(std::abs(matrix[selected * size + pivot]) < singularPivot)
                     throw std::runtime_error{"Bayesian strategy received a singular kernel matrix."};
                 if(selected != pivot)
                 {

@@ -1303,9 +1303,11 @@ namespace alpakaTune
             ensureBudgetStorage();
             if(m_explorationComplete)
                 return nextBudgetCandidate();
-            for(std::size_t attempt = 0u; attempt < m_defaults.maximumConsecutiveStrategyRetries; ++attempt)
+            for(std::size_t attempt = 0u; attempt < m_defaults.maximumConsecutiveStrategyRetries;)
             {
                 auto const proposal = recommendCandidate();
+                if(!proposal || !proposal->discoveredIllegalCandidate)
+                    ++attempt;
                 if(proposal && proposal->disposition == RecommendationDisposition::scheduled)
                 {
                     if(m_queue)
@@ -1379,6 +1381,11 @@ namespace alpakaTune
                 m_budgetLastDriftValue = value;
             }
             refreshBudgetIncumbent();
+            // The application may have invalidated this launch before submitting its metric. Without another
+            // measured candidate there is no incumbent to compare with; the next enqueue consumes the
+            // invalidation and removes the candidate from scheduling.
+            if(!m_budgetIncumbent)
+                return;
             if(m_budgetStatistics[*m_budgetIncumbent].median < oldBest)
                 m_budget->unimprovedProposals = 0u;
             else if(m_budgetPurpose == LaunchPurpose::experiment && candidate != *m_budgetIncumbent)
@@ -2485,6 +2492,7 @@ namespace alpakaTune
          */
         [[nodiscard]] auto admitCandidate(std::size_t candidate) -> RecommendationDisposition
         {
+            m_discoveredIllegalCandidate = false;
             if(!candidateUserValid(candidate))
             {
                 ++m_userInvalidatedRejectedCount;
@@ -2506,6 +2514,7 @@ namespace alpakaTune
                 m_rejected.at(candidate) = true;
                 ++m_rejectedCount;
                 ++m_restrictionRejectedCount;
+                m_discoveredIllegalCandidate = true;
                 return RecommendationDisposition::restrictionRejected;
             }
 
@@ -2584,7 +2593,9 @@ namespace alpakaTune
                 m_defaults.ciRelativeWidth,
                 m_defaults.outlierMadScale,
                 m_defaults.historyWindowSize,
-                m_defaults.selection == SelectionPolicy::fixed};
+                // Only online exploration measures a fixed record up to runsPerCandidate; an offline replay
+                // restores its records and is not bound by that limit.
+                m_defaults.selection == SelectionPolicy::fixed && m_defaults.exploration == ExplorationPolicy::online};
         }
 
         /** @brief Whether the online-fixed execution guard has been reached. */
@@ -2750,6 +2761,13 @@ namespace alpakaTune
         {
             std::size_t candidate{};
             RecommendationDisposition disposition{};
+            /** The proposal revealed a candidate that the tuning space or the launch forbids.
+             *
+             * Such a proposal narrows the search and is not a strategy retry: every candidate is discovered
+             * as illegal at most once, so these proposals are bounded by the candidate count, and a strategy
+             * crossing a long run of illegal candidates still reaches the legal ones behind it.
+             */
+            bool discoveredIllegalCandidate{};
         };
 
         /** @brief Request and process exactly one strategy recommendation. */
@@ -2784,7 +2802,7 @@ namespace alpakaTune
                 m_strategy->recommendationResult(recommendation, disposition);
             m_recommendationSecondsSinceLastLaunch
                 += std::chrono::duration<double>{std::chrono::steady_clock::now() - start}.count();
-            return CandidateRecommendation{candidate, disposition};
+            return CandidateRecommendation{candidate, disposition, m_discoveredIllegalCandidate};
         }
 
         /** @brief Lazily bind persistence, histories, strategy, and optional queue.
@@ -2877,8 +2895,11 @@ namespace alpakaTune
                 if(!m_budget)
                     refillQueue();
                 if(!m_budget && m_terminal && !currentBestCandidate())
-                    throw std::invalid_argument{"The strategy retry limit was reached before any candidate was "
-                                                "accepted and measured."};
+                    throw std::invalid_argument{
+                        m_completionReason == TunerCompletionReason::noValidConfiguration
+                            ? "The tuning-space constraints rejected every candidate."
+                            : "The strategy retry limit was reached before any candidate was accepted and "
+                              "measured."};
                 if(!m_budget && !m_terminal && m_queue->empty())
                     throw std::invalid_argument{"The tuning-space constraints rejected every candidate."};
             }
@@ -2942,7 +2963,12 @@ namespace alpakaTune
             while(!m_queue->full())
             {
                 if(m_defaults.selection == SelectionPolicy::fixed && allFixedCandidatesAdmitted())
+                {
+                    // The proposals of this refill may have revealed the last open candidates as illegal.
+                    if(m_queue->empty() && allFixedCandidatesResolved())
+                        finishTuning();
                     return;
+                }
                 if(m_consecutiveStrategyRetries >= m_defaults.maximumConsecutiveStrategyRetries)
                 {
                     if(m_queue->empty())
@@ -2977,6 +3003,8 @@ namespace alpakaTune
                     m_consecutiveStrategyRetries = 0u;
                     return;
                 }
+                if(recommendation->discoveredIllegalCandidate)
+                    continue;
                 if(recommendation->disposition != RecommendationDisposition::scheduled)
                 {
                     ++m_consecutiveStrategyRetries;
@@ -3067,6 +3095,8 @@ namespace alpakaTune
                     m_consecutiveStrategyRetries = 0u;
                     return {recommendation->candidate, true, true, true};
                 }
+                if(recommendation && recommendation->discoveredIllegalCandidate)
+                    continue;
                 ++m_consecutiveStrategyRetries;
                 if(m_consecutiveStrategyRetries == m_defaults.maximumConsecutiveStrategyRetries)
                     ++m_strategyRetryLimitReachedCount;
@@ -3870,6 +3900,8 @@ namespace alpakaTune
                 m_consecutiveStrategyRetries = 0u;
                 refillQueue();
             }
+            if(m_explorationComplete)
+                return;
             if(m_defaults.selection == SelectionPolicy::fixed && !m_queue && allFixedCandidatesResolved())
             {
                 finishTuning();
@@ -5163,6 +5195,8 @@ namespace alpakaTune
         std::vector<std::function<bool(Tuner const&, std::array<std::size_t, dimensionCount>&, bool)>>
             m_domainProjectors;
         bool m_refinementPending{};
+        /** Whether the latest admission marked its candidate as illegal for the first time. */
+        bool m_discoveredIllegalCandidate{};
         std::function<bool(Tuner const&, CandidateIndices const&)> m_launchValidator;
         std::size_t m_candidateCount{1u};
         std::uint64_t m_baseRandomSeed{};

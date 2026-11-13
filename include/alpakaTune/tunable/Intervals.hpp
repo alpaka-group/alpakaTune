@@ -25,6 +25,11 @@ namespace alpakaTune
         using value_type = T;
         static constexpr bool runtimeDomain = true;
         static constexpr bool enumerable = std::integral<T>;
+        /** Unsigned type of at least int width: distances of narrower value types must not be promoted to int. */
+        using Distance = typename std::conditional_t<
+            std::integral<T>,
+            std::make_unsigned<std::common_type_t<T, int>>,
+            std::type_identity<T>>::type;
 
         Interval(T minimum, T maximum, T step = T{1}) : m_minimum(minimum), m_maximum(maximum), m_step(step)
         {
@@ -34,7 +39,7 @@ namespace alpakaTune
                                             "min <= max, and a positive step."};
             if constexpr(std::integral<T>)
             {
-                using U = std::make_unsigned_t<T>;
+                using U = Distance;
                 auto const distance = static_cast<U>(maximum) - static_cast<U>(minimum);
                 auto const quotient = static_cast<U>(distance / static_cast<U>(step));
                 if(quotient >= std::numeric_limits<std::size_t>::max())
@@ -71,7 +76,7 @@ namespace alpakaTune
                 throw std::out_of_range{"Numeric domain index out of range."};
             if constexpr(std::integral<T>)
             {
-                using U = std::make_unsigned_t<T>;
+                using U = Distance;
                 return static_cast<T>(static_cast<U>(m_minimum) + static_cast<U>(index) * static_cast<U>(m_step));
             }
             else
@@ -89,7 +94,7 @@ namespace alpakaTune
                 return std::nullopt;
             if constexpr(std::integral<T>)
             {
-                using U = std::make_unsigned_t<T>;
+                using U = Distance;
                 auto const offset = static_cast<U>(value) - static_cast<U>(m_minimum);
                 if(offset % static_cast<U>(m_step) != 0u)
                     return std::nullopt;

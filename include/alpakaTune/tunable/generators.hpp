@@ -8,7 +8,9 @@
 #include <alpaka/Vec.hpp>
 
 #include <algorithm>
+#include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 #include <vector>
 
@@ -47,6 +49,50 @@ namespace alpakaTune::generate
             else
             {
                 return value <= maximum;
+            }
+        }
+
+        /** Whether value + step is representable, larger than value and not beyond maximum. */
+        template<typename T>
+        [[nodiscard]] constexpr auto sumIsWithin(T value, T step, T maximum) -> bool
+        {
+            if constexpr(std::integral<T>)
+                return value <= maximum
+                       && static_cast<std::uintmax_t>(maximum) - static_cast<std::uintmax_t>(value)
+                              >= static_cast<std::uintmax_t>(step);
+            else
+                return value + step > value && value + step <= maximum;
+        }
+
+        /** Whether value * factor is representable, larger than value and not beyond maximum. */
+        template<typename T>
+        [[nodiscard]] constexpr auto productIsWithin(T value, T factor, T maximum) -> bool
+        {
+            if constexpr(std::integral<T>)
+                return value <= maximum / factor;
+            else
+                return value * factor > value && value * factor <= maximum;
+        }
+
+        /** Whether every component of the value following in a generated space stays within maximum.
+         *
+         * The following value is tested before it is formed: it may not be representable, and a wrapped
+         * integer would compare as within the maximum again.
+         */
+        template<alpaka::concepts::VectorOrScalar T>
+        [[nodiscard]] constexpr auto nextIsWithin(T const& value, T const& increment, T const& maximum, auto within)
+            -> bool
+        {
+            if constexpr(alpaka::concepts::Vector<T>)
+            {
+                for(std::size_t dimension = 0u; dimension < T::dim(); ++dimension)
+                    if(!within(value[dimension], increment[dimension], maximum[dimension]))
+                        return false;
+                return true;
+            }
+            else
+            {
+                return within(value, increment, maximum);
             }
         }
 
@@ -91,7 +137,15 @@ namespace alpakaTune::generate
             throw std::invalid_argument{"generate::linSpace needs a positive step."};
         auto values = std::vector<T>{};
         for(auto value = first; detail::isWithin(value, last); detail::add(value, step))
+        {
             values.push_back(value);
+            if(!detail::nextIsWithin(
+                   value,
+                   step,
+                   last,
+                   [](auto... arguments) { return detail::sumIsWithin(arguments...); }))
+                break;
+        }
         return RVals<T>{std::move(values)};
     }
 
@@ -116,7 +170,15 @@ namespace alpakaTune::generate
         }
         auto values = std::vector<T>{};
         for(auto value = first; detail::isWithin(value, last); detail::multiply(value, factor))
+        {
             values.push_back(value);
+            if(!detail::nextIsWithin(
+                   value,
+                   factor,
+                   last,
+                   [](auto... arguments) { return detail::productIsWithin(arguments...); }))
+                break;
+        }
         return RVals<T>{std::move(values)};
     }
 
