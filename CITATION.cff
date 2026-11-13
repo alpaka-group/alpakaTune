@@ -10,7 +10,7 @@ authors:
 license: "MPL-2.0"
 repository-code: "https://github.com/alpaka-group/alpakaTune"
 url: "https://github.com/alpaka-group/alpakaTune"
-version: "1.0.0"
+version: "0.1.0"
 abstract: "A header-only C++20 library for tuning launch shapes and kernel parameters of alpaka kernels at run time and compile time."
 keywords:
   - "alpaka"

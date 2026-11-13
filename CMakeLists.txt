@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MPL-2.0
 cmake_minimum_required(VERSION 3.25)
 
-project(alpakaTune VERSION 1.0.0 LANGUAGES CXX)
+project(alpakaTune VERSION 0.1.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
