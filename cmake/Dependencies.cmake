@@ -9,14 +9,14 @@ include(FetchContent)
 function(alpakaTune_make_accelerator_dependencies)
     if(NOT TARGET alpaka::alpaka)
         FetchContent_Declare(
-            alpaka3
+            alpaka
             GIT_REPOSITORY https://github.com/alpaka-group/alpaka.git
             GIT_TAG
                 eb677e8d7f70d79b35df25d9002f94ba669b6f44 # 3.0.0
             # A shallow clone cannot reliably resolve a historical pin.
             GIT_SHALLOW FALSE
         )
-        FetchContent_MakeAvailable(alpaka3)
+        FetchContent_MakeAvailable(alpaka)
     endif()
     if(alpakaTune_DEP_METRICS)
         set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE NEVER)

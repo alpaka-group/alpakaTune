@@ -48,3 +48,47 @@ For the 10 ms acceptance limit, the inspection hook supplies deterministic 5 ms
 and 20 ms durations. Geometry and accuracy checks still use real device results;
 the timing fixture keeps acceptance tests independent of sanitizer overhead,
 backend startup, and runner speed. The example executable uses measured durations.
+
+## Installed-package test
+
+```sh
+cmake -S . -B build -DalpakaTune_BUILD_TESTING=ON -DalpakaTune_INSTALL_TEST=ON
+cmake --build build
+ctest --test-dir build -R alpakaTune_install_consumer --output-on-failure
+```
+
+The test installs the build into a scratch prefix below the build directory. It then configures
+`tests/install_consumer` against that prefix with `find_package(alpakaTune CONFIG REQUIRED)`, builds the first-tuner
+tutorial as the consumer, and runs it. The consumer project has no FetchContent fallback.
+
+## Naming checks with clang-tidy
+
+```sh
+cmake -S . -B build-tidy -DCMAKE_CXX_COMPILER=clang++ -DalpakaTune_CLANG_TIDY=ON \
+  -DalpakaTune_BUILD_TESTING=ON -DalpakaTune_BUILD_EXAMPLES=ON
+cmake --build build-tidy
+```
+
+`alpakaTune_CLANG_TIDY` requires Clang and a matching `clang-tidy`. The build then runs clang-tidy with the
+repository's `.clang-tidy` on every public header and on the configured tests, examples, and documentation examples.
+The rules are alpaka's identifier-naming rules, and a finding fails the build.
+
+## Line coverage
+
+```sh
+cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage -Og" \
+  -DalpakaTune_BUILD_TESTING=ON -Dalpaka_DEP_OMP=OFF
+cmake --build build-coverage
+ctest --test-dir build-coverage
+gcovr --root . --filter include/alpakaTune/ build-coverage/tests
+```
+
+The report covers the public headers as exercised by the tests. Counts for heavily templated headers include every
+instantiation. Keep OpenMP disabled: instrumented OpenMP kernels are slow enough to exceed the test timeouts.
+
+## Benchmark script tests
+
+```sh
+python3 -m pip install -r benchmarks/requirements.txt pytest
+python3 -m pytest benchmarks
+```

@@ -23,8 +23,8 @@ The same helper accepts a ``ThreadSpec``. A ``FrameSpec`` exposes
 **each axis**, include the original geometry, and propose power-of-two
 alternatives. The tuner checks the actual derived thread geometry against the
 selected device's total and per-axis limits, the executor's thread support,
-and Alpaka's dynamic shared-memory query before registering candidates.
-This uses the pinned Alpaka API and requires no Alpaka changes.
+and alpaka's dynamic shared-memory query before registering candidates.
+This uses the pinned alpaka API and requires no alpaka changes.
 
 Override one parameter when you know more about the kernel::
 
@@ -56,12 +56,12 @@ Automatic spaces also apply to ordinary kernel parameters::
    inline constexpr auto unroll = ALPAKA_TUNE_TUNABLE("unroll");
    auto tunables = alpakaTune::TunableBundle{
        tile(alpakaTune::autoCandidates(
-           alpakaTune::domain::interval(1u, 4096u),
+           alpakaTune::interval(1u, 4096u),
            alpakaTune::hint::logarithmic,
            alpakaTune::hint::alignment(32u),
            alpakaTune::hint::preferred(128u))),
        unroll(alpakaTune::autoCandidates(
-           alpakaTune::domain::compileInterval<1u, 8u>(
+           alpakaTune::compileInterval<1u, 8u>(
                alpakaTune::hint::logarithmic)))};
 
 An integral runtime interval is stored as bounds and a step, without building
@@ -86,10 +86,10 @@ Declare a dependent scalar runtime domain with named parents::
 
    inline constexpr auto workers = ALPAKA_TUNE_TUNABLE("workers");
    auto workersDomain = alpakaTune::autoCandidates(
-       alpakaTune::domain::dependent(
-           alpakaTune::domain::interval(1u, 64u), tile,
+       alpakaTune::dependent(
+           alpakaTune::interval(1u, 64u), tile,
            [](unsigned chosenTile) {
-               return alpakaTune::domain::interval(1u, std::min(64u, chosenTile / 32u));
+               return alpakaTune::interval(1u, std::min(64u, chosenTile / 32u));
            }));
 
 The generator returns allowed values inside the declared child domain; it

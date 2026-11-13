@@ -1,4 +1,4 @@
-name: alpaka3-tuner
+name: alpakaTune
 channels:
   - conda-forge
 dependencies:

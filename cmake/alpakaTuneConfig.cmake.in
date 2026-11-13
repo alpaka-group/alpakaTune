@@ -2,7 +2,7 @@
 
 include(CMakeFindDependencyMacro)
 set(_alpakaTune_package_prefix "${PACKAGE_PREFIX_DIR}")
-# The metrics component resolves its Alpaka dependency first.
+# The metrics component resolves its alpaka dependency first.
 if("metrics" IN_LIST alpakaTune_FIND_COMPONENTS)
     if(NOT @alpakaTune_DEP_METRICS@)
         set(alpakaTune_FOUND FALSE)
@@ -15,9 +15,9 @@ endif()
 find_dependency(alpaka CONFIG REQUIRED)
 find_dependency(yaml-cpp CONFIG REQUIRED)
 
-# Alpaka3's development package currently exports its include path as a
+# alpaka's development package currently exports its include path as a
 # relative INSTALL_INTERFACE expression. Imported targets evaluate that path
-# relative to the consuming project, so normalise it to Alpaka's own prefix.
+# relative to the consuming project, so normalise it to alpaka's own prefix.
 get_target_property(_alpakaTune_alpaka_includes alpaka::alpaka INTERFACE_INCLUDE_DIRECTORIES)
 if(_alpakaTune_alpaka_includes MATCHES "\\$<INSTALL_INTERFACE:")
     get_filename_component(_alpakaTune_alpaka_prefix "${alpaka_DIR}/../../.." ABSOLUTE)

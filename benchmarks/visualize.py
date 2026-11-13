@@ -263,7 +263,7 @@ def plot_context(
                 runtime * 1.0e6,
                 linewidth=1.3,
                 label=(
-                    f"Untuned Alpaka {baseline_executor} mean {kind_label}"
+                    f"Untuned alpaka {baseline_executor} mean {kind_label}"
                 ),
                 **style,
             )

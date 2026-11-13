@@ -41,5 +41,5 @@
       "main.cpp" : "9d2dfc85d51dae8a5a9211d1c2c2952d9d8338e4785a71f82a2ff81fd37b3465"
    },
    "steps" : 64,
-   "upstream_alpaka3_revision" : "b7d339d07056a9a2a6c4051cc3927157bc5f0d51"
+   "upstream_alpaka_revision" : "b7d339d07056a9a2a6c4051cc3927157bc5f0d51"
 }

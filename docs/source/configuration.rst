@@ -122,7 +122,7 @@ Queue scheduling is optional
 ----------------------------
 
 The YAML ``queue`` section configures the tuner's **candidate scheduler**, not
-an Alpaka device queue. Omitting it launches accepted recommendations directly.
+an alpaka device queue. Omitting it launches accepted recommendations directly.
 To interleave candidates and omit initial warm-up timings, add:
 
 .. code-block:: yaml

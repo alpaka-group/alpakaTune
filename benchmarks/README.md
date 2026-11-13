@@ -164,14 +164,14 @@ strategy and tuning-parameter values. Existing results can be plotted again with
 python3 benchmarks/visualize.py benchmarks/results/<run-id>
 ```
 
-## Untuned Alpaka baseline
+## Untuned alpaka baseline
 
-The pinned Alpaka source tree contains the original examples without an
+The pinned alpaka source tree contains the original examples without an
 alpakaTune context. Configure them in a separate build directory so their target
 names and measurements cannot mix with the tuned variants:
 
 ```bash
-cmake -S build/_deps/alpaka3-src -B build/alpaka-baseline \
+cmake -S build/_deps/alpaka-src -B build/alpaka-baseline \
   -Dalpaka_EXAMPLES=ON \
   -Dalpaka_DEP_CUDA=ON \
   -Dalpaka_EXEC_CpuOmpBlocks=ON \
@@ -204,8 +204,8 @@ python3 benchmarks/visualize.py benchmarks/results/<tuned-run-id> \
 The overlay uses separately labelled horizontal lines and selects the baseline
 matching the tuned context's CpuOmpBlocks or GpuCuda executor. Examples
 that do not report a comparable executor runtime are left without a baseline line.
-The unmodified Alpaka examples
+The unmodified alpaka examples
 choose their enabled backends from their CMake configuration and do not support
-the tuner's `--backend` or `--executor` switches. Alpaka has no upstream
+the tuner's `--backend` or `--executor` switches. alpaka has no upstream
 `matrixMultiplication` counterpart at the pinned revision, so that example is
 not included in the baseline runner.

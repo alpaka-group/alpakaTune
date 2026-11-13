@@ -5,15 +5,16 @@
 
 #include <alpaka/tag.hpp>
 
-namespace alpakaTune::timing {
+namespace alpakaTune::timing
+{
 
-using Enabled = alpaka::timing::Enabled;
-using Disabled = alpaka::timing::Disabled;
+    using Enabled = alpaka::timing::Enabled;
+    using Disabled = alpaka::timing::Disabled;
 
-inline constexpr auto enabled = alpaka::timing::enabled;
-inline constexpr auto disabled = alpaka::timing::disabled;
+    inline constexpr auto enabled = alpaka::timing::enabled;
+    inline constexpr auto disabled = alpaka::timing::disabled;
 
-template <typename Type>
-concept Timing = alpaka::concepts::Timing<Type>;
+    template<typename T_Type>
+    concept Timing = alpaka::concepts::Timing<T_Type>;
 
 } // namespace alpakaTune::timing
