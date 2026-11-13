@@ -237,6 +237,14 @@ target_link_libraries(alpakaTune_md_tunable_tests PRIVATE alpakaTune::alpakaTune
 alpaka_finalize(alpakaTune_md_tunable_tests)
 add_test(NAME alpakaTune_md_tunable_tests COMMAND alpakaTune_md_tunable_tests)
 
+# Unit tests of single public headers: value intervals and hints, the strategy interface, configuration and launch shapes.
+foreach(_unit IN ITEMS intervals strategy_interface tuner_config derived_thread_spec)
+    add_executable(alpakaTune_${_unit}_tests ${_unit}.cpp)
+    target_link_libraries(alpakaTune_${_unit}_tests PRIVATE alpakaTune::alpakaTune Catch2::Catch2WithMain)
+    alpaka_finalize(alpakaTune_${_unit}_tests)
+    add_test(NAME alpakaTune_${_unit}_tests COMMAND alpakaTune_${_unit}_tests)
+endforeach()
+
 add_executable(alpakaTune_execution_runtime_summary_tests execution_runtime_summary.cpp)
 target_link_libraries(alpakaTune_execution_runtime_summary_tests PRIVATE alpakaTune::alpakaTune Catch2::Catch2WithMain)
 alpaka_finalize(alpakaTune_execution_runtime_summary_tests)
