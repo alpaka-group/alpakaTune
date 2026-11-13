@@ -1,6 +1,6 @@
 {
   "title": "alpakaTune: Parameter Tuning for alpaka Kernels",
-  "version": "3.0.0",
+  "version": "1.0.0",
   "pub_id": "41733",
   "description": "alpakaTune is a header-only C++20 library for tuning alpaka kernels. It measures candidate launch shapes and kernel parameters while the application runs and uses those measurements to choose configurations for later launches. Candidates can be runtime values, compile-time values or types, and automatically generated launch configurations. Exploration strategies include exhaustive search, random search, simulated annealing and Bayesian optimization. Measurements can be saved and reused in later runs, and the objective can be the kernel runtime or an application-defined metric.\nalpakaTune builds on alpaka 3 (https://github.com/alpaka-group/alpaka) and supports its CPU and GPU (CUDA, HIP, SYCL) backends. It originates from the master thesis \"Performance Optimization in Accelerator Libraries using Parameter-Tuning\" (TU Dresden, 2025).",
   "creators": [
@@ -63,7 +63,7 @@
   ],
   "related_identifiers": [
     {
-      "identifier": "https://github.com/TimHanel00/alpakaTune",
+      "identifier": "https://github.com/alpaka-group/alpakaTune",
       "relation": "isSupplementTo",
       "scheme": "url"
     },

@@ -8,9 +8,9 @@ authors:
     orcid: "https://orcid.org/0009-0008-6324-3946"
     affiliation: "Helmholtz-Zentrum Dresden-Rossendorf, TU Dresden"
 license: "MPL-2.0"
-repository-code: "https://github.com/TimHanel00/alpakaTune"
-url: "https://github.com/TimHanel00/alpakaTune"
-version: "3.0.0"
+repository-code: "https://github.com/alpaka-group/alpakaTune"
+url: "https://github.com/alpaka-group/alpakaTune"
+version: "1.0.0"
 abstract: "A header-only C++20 library for tuning launch shapes and kernel parameters of alpaka kernels at run time and compile time."
 keywords:
   - "alpaka"

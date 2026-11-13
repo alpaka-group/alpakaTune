@@ -67,7 +67,7 @@ FetchContent adds the dependency and its exported target:
    include(FetchContent)
    FetchContent_Declare(
      alpakaTune
-     GIT_REPOSITORY https://github.com/TimHanel00/alpakaTune.git
+     GIT_REPOSITORY https://github.com/alpaka-group/alpakaTune.git
      GIT_TAG dev)
    FetchContent_MakeAvailable(alpakaTune)
    add_executable(my_app main.cpp)
