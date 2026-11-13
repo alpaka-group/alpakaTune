@@ -3,7 +3,8 @@
 
 #pragma once
 
-#include "alpakaTune/tunable/Domains.hpp"
+#include "alpakaTune/tunable/AutoCandidates.hpp"
+#include "alpakaTune/tunable/Intervals.hpp"
 
 #include <alpaka/CVec.hpp>
 #include <alpaka/Vec.hpp>
@@ -100,7 +101,7 @@ namespace alpakaTune
 // Compatibility spelling for the first frontend draft.
 #define ALPAKA_TUNE_NAME(text) ALPAKA_TUNE_TUNABLE(text)
 
-    /** Runtime candidate values. Integral constructors describe inclusive ranges.
+    /** A listed runtime domain of candidate values. Integral constructors describe inclusive ranges.
      */
     template<typename T>
     class RVals
@@ -191,7 +192,7 @@ namespace alpakaTune
     template<std::integral T>
     RVals(T, T, T) -> RVals<T>;
 
-    /** Compile-time candidate values. */
+    /** A listed compile-time domain of candidate values. */
     template<auto... T_values>
     struct CVals
     {
@@ -200,7 +201,7 @@ namespace alpakaTune
         using Values = std::tuple<std::integral_constant<decltype(T_values), T_values>...>;
     };
 
-    /** Compile-time candidate types, for example differently sized alpaka::CVecs.
+    /** A listed compile-time domain of candidate types, for example differently sized alpaka::CVecs.
      */
     template<typename... T_Values>
     struct CTypes
@@ -420,7 +421,7 @@ namespace alpakaTune
         };
 
         template<typename T_Domain, typename T_Generator, typename... T_Names>
-        struct CandidateDimensionCount<domain::Dependent<T_Domain, T_Generator, T_Names...>>
+        struct CandidateDimensionCount<Dependent<T_Domain, T_Generator, T_Names...>>
             : CandidateDimensionCount<T_Domain>
         {
         };

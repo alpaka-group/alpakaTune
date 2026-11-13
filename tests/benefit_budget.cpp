@@ -322,7 +322,7 @@ TEST_CASE("budgeted automatic catalogs retain stable candidate IDs", "[budget]")
     auto frame = alpaka::onHost::FrameSpec{Vec{1u}, Vec{1u}, alpaka::exec::cpuSerial};
     auto tuner = alpakaTune::makeTuner(
         cfg,
-        alpakaTune::TunableBundle{choice(alpakaTune::autoCandidates(alpakaTune::domain::interval(0, 3)))},
+        alpakaTune::TunableBundle{choice(alpakaTune::autoCandidates(alpakaTune::interval(0, 3)))},
         dev,
         alpakaTune::elapsedTimeMetric("catalog_seconds"));
     auto bundle = alpaka::KernelBundle{Kernel{}, output.getMdSpan(), alpakaTune::markTunable(choice)};

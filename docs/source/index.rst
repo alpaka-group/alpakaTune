@@ -19,9 +19,11 @@ GPU availability depends on the alpaka backends enabled in your build.
 Five concepts to keep in mind
 -----------------------------
 
-* **Tunable:** a named choice the tuner may change. ``RVals`` supplies runtime
-  values; ``CVals`` and ``CTypes`` supply compiled alternatives.
-  ``autoCandidates`` declares domains for progressive candidate generation.
+* **Tunable:** a named choice the tuner may change. Its *domain* is the set of
+  values it may take. ``RVals`` lists a runtime domain; ``CVals`` and
+  ``CTypes`` list compiled alternatives; ``interval`` describes a numeric
+  domain by its bounds. ``autoCandidates`` generates candidates step by step
+  from a domain that is too large to try completely.
 * **TunableBundle:** the domains and their restrictions. The tuner snapshots
   the declarations when constructed; an automatic catalog can grow within them.
 * **KernelBundle:** the launch prototype. Tunable markers in its arguments

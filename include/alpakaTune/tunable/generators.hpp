@@ -146,7 +146,7 @@ namespace alpakaTune::generate
     } // namespace detail
 } // namespace alpakaTune::generate
 
-namespace alpakaTune::domain
+namespace alpakaTune
 {
     /** Generate at most eight linearly spaced compiled alternatives from bounds. */
     template<auto T_minimum, auto T_maximum>
@@ -166,17 +166,14 @@ namespace alpakaTune::domain
     {
         return generate::detail::compileLog<T_minimum, T_maximum, T_minimum>();
     }
-} // namespace alpakaTune::domain
 
-namespace alpakaTune
-{
-    /** Concise automatic compiled domain declared using bounds only. */
+    /** Concise automatic compiled alternatives declared using bounds only. */
     template<auto T_minimum, auto T_maximum, typename... T_Hints>
     [[nodiscard]] auto autoCandidates(T_Hints... hints)
     {
         if constexpr((std::same_as<std::remove_cvref_t<T_Hints>, hint::Logarithmic> || ... || false))
-            return autoCandidates(domain::compileInterval<T_minimum, T_maximum>(hint::logarithmic), hints...);
+            return autoCandidates(compileInterval<T_minimum, T_maximum>(hint::logarithmic), hints...);
         else
-            return autoCandidates(domain::compileInterval<T_minimum, T_maximum>(), hints...);
+            return autoCandidates(compileInterval<T_minimum, T_maximum>(), hints...);
     }
 } // namespace alpakaTune
