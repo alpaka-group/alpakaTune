@@ -245,7 +245,12 @@ Rejected recommendations are retried synchronously. This includes constraints,
 the adaptive revisit gate, and the relative-score gate. An active queue
 duplicate is accepted instead. ``maximum_consecutive_strategy_retries``
 defaults to 20 and bounds that work in one admission attempt. Admission resets
-the streak. When active queue entries remain, reaching the limit pauses refill
+the streak. A recommendation that reveals a candidate as forbidden by a
+constraint or by the launch is not counted: every candidate is revealed at most
+once, so a strategy crosses a long run of forbidden candidates and reaches the
+permitted ones behind it. Recommending a candidate already known as forbidden
+counts as a retry. In ``online/fixed``, a space whose candidates are all
+forbidden ends with ``TunerCompletionReason::noValidConfiguration``. When active queue entries remain, reaching the limit pauses refill
 until an activation completes and changes the scheduler context.
 
 If an adaptive admission attempt exhausts that bound with no candidate ready

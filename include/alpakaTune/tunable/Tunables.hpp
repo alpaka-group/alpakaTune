@@ -132,10 +132,13 @@ namespace alpakaTune
         {
             if(step <= T{0} || maximum < minimum)
                 throw std::invalid_argument{"An RVals range requires min <= max and a positive step."};
+            // The remaining distance is formed in the widest unsigned type, so it neither wraps for unsigned
+            // values nor overflows for signed ones.
             for(auto value = minimum;;)
             {
                 m_values.push_back(value);
-                if(value > maximum - step)
+                if(static_cast<std::uintmax_t>(maximum) - static_cast<std::uintmax_t>(value)
+                   < static_cast<std::uintmax_t>(step))
                     break;
                 value = static_cast<T>(value + step);
             }
