@@ -44,6 +44,7 @@ repos:
       name: "Check project naming (alpaka, alpakaTune)"
       language: pygrep
       # The Read the Docs project keeps its original slug; api::Alpaka is an alpaka identifier.
+      # CITATION.cff quotes the published title of the alpaka paper.
       entry: 'alpaka3(?!-tuner\.readthedocs\.io)|Alpaka3|ALPAKA3|(?<!api::)\bAlpaka\b|alpaka[-_]tuner|alpakaTuner'
       types: [text]
-      exclude: ^\.pre-commit-config\.yaml$
+      exclude: ^(\.pre-commit-config\.yaml|CITATION\.cff)$

@@ -3,6 +3,8 @@
 alpakaTune is a header-only C++20 library for tuning alpaka kernels.
 It measures candidate launch shapes and kernel parameters, then uses those
 measurements to choose configurations for later launches.
+The [documentation](https://alpaka3-tuner.readthedocs.io/en/latest/) explains setup,
+configuration, and the tuning workflows.
 
 This complete example runs on every available device for each enabled executor.
 It runs the same increment kernel with different launch configurations as the tuner
@@ -85,3 +87,8 @@ for this example. A dedicated test builds and runs this exact snippet.
 The [documentation](https://alpaka3-tuner.readthedocs.io/en/latest/)
 covers launch tuning, saved history, and custom objectives;
 [examples](example/README.md) show larger applications.
+
+## Citation
+
+If you use alpakaTune in research, please cite it using the metadata and publication references in
+[CITATION.cff](CITATION.cff).
