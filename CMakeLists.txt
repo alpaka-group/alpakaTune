@@ -11,6 +11,7 @@ option(alpakaTune_BUILD_TESTING "Build alpakaTune tests" OFF)
 option(alpakaTune_BUILD_EXAMPLES "Build alpakaTune examples" OFF)
 option(alpakaTune_HEADER_CHECKS "Build public-header self-containment checks" OFF)
 option(alpakaTune_CLANG_TIDY "Run clang-tidy on public headers, tests and examples (requires Clang)" OFF)
+option(alpakaTune_INSTALL_TEST "Test that an installed alpakaTune is usable through find_package" OFF)
 option(alpakaTune_ENABLE_PERSISTENCE "Enable JSON persistent histories" ON)
 set(alpakaTune_BUNDLED_MODEL
     "${CMAKE_CURRENT_SOURCE_DIR}/models/alpakaTune-default.atml"

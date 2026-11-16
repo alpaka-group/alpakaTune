@@ -237,6 +237,14 @@ target_link_libraries(alpakaTune_md_tunable_tests PRIVATE alpakaTune::alpakaTune
 alpaka_finalize(alpakaTune_md_tunable_tests)
 add_test(NAME alpakaTune_md_tunable_tests COMMAND alpakaTune_md_tunable_tests)
 
+# Unit tests of single public headers: value intervals and hints, the strategy interface, configuration and launch shapes.
+foreach(_unit IN ITEMS intervals strategy_interface tuner_config derived_thread_spec)
+    add_executable(alpakaTune_${_unit}_tests ${_unit}.cpp)
+    target_link_libraries(alpakaTune_${_unit}_tests PRIVATE alpakaTune::alpakaTune Catch2::Catch2WithMain)
+    alpaka_finalize(alpakaTune_${_unit}_tests)
+    add_test(NAME alpakaTune_${_unit}_tests COMMAND alpakaTune_${_unit}_tests)
+endforeach()
+
 add_executable(alpakaTune_execution_runtime_summary_tests execution_runtime_summary.cpp)
 target_link_libraries(alpakaTune_execution_runtime_summary_tests PRIVATE alpakaTune::alpakaTune Catch2::Catch2WithMain)
 alpaka_finalize(alpakaTune_execution_runtime_summary_tests)
@@ -261,4 +269,16 @@ if(alpakaTune_DEP_METRICS)
     target_link_libraries(alpakaTune_metric_objective_tests PRIVATE alpakaTune::metrics Catch2::Catch2WithMain)
     alpaka_finalize(alpakaTune_metric_objective_tests)
     add_test(NAME alpakaTune_metric_objective_tests COMMAND alpakaTune_metric_objective_tests)
+endif()
+
+# Install this build into a scratch prefix and build a find_package consumer against it.
+if(alpakaTune_INSTALL_TEST)
+    add_test(
+        NAME alpakaTune_install_consumer
+        COMMAND
+            ${CMAKE_COMMAND} -DBUILD_DIR=${PROJECT_BINARY_DIR} -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/install-consumer
+            -DGENERATOR=${CMAKE_GENERATOR} -DCXX_COMPILER=${CMAKE_CXX_COMPILER} -DBUILD_TYPE=${CMAKE_BUILD_TYPE} -P
+            ${CMAKE_CURRENT_SOURCE_DIR}/install_consumer/run.cmake
+    )
+    set_tests_properties(alpakaTune_install_consumer PROPERTIES LABELS integration TIMEOUT 600)
 endif()
