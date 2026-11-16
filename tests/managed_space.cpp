@@ -75,9 +75,9 @@ namespace
 } // namespace
 
 static_assert(std::same_as<
-              decltype(alpakaTune::domain::compileInterval<1u, 8u>(alpakaTune::hint::logarithmic)),
+              decltype(alpakaTune::compileInterval<1u, 8u>(alpakaTune::hint::logarithmic)),
               alpakaTune::CVals<1u, 2u, 4u, 8u>>);
-static_assert(decltype(alpakaTune::domain::compileInterval<1u, 1000u>())::size == 8u);
+static_assert(decltype(alpakaTune::compileInterval<1u, 1000u>())::size == 8u);
 
 static_assert(std::same_as<
               decltype(alpakaTune::autoCandidates<1u, 8u>(alpakaTune::hint::logarithmic)),
@@ -85,7 +85,7 @@ static_assert(std::same_as<
 
 TEST_CASE("numeric domains keep ranges lazy and compile bounds bounded", "[space]")
 {
-    auto domain = alpakaTune::domain::interval(1u, 1'000'000'000u);
+    auto domain = alpakaTune::interval(1u, 1'000'000'000u);
     CHECK(domain.size() == 1'000'000'000u);
     CHECK(domain.at(999'999'999u) == 1'000'000'000u);
     CHECK(domain.indexOf(99u) == 98u);
@@ -93,9 +93,9 @@ TEST_CASE("numeric domains keep ranges lazy and compile bounds bounded", "[space
     auto aligned = alpakaTune::autoCandidates(domain, alpakaTune::hint::alignment(32u), alpakaTune::hint::logarithmic);
     REQUIRE(aligned.project(100000u, true));
     CHECK(domain.at(*aligned.project(100000u, true)) % 32u == 0u);
-    CHECK_THROWS(alpakaTune::domain::interval(8, 1));
+    CHECK_THROWS(alpakaTune::interval(8, 1));
     auto compiled = alpakaTune::autoCandidates(
-        alpakaTune::domain::compileInterval<1u, 8u>(alpakaTune::hint::logarithmic),
+        alpakaTune::compileInterval<1u, 8u>(alpakaTune::hint::logarithmic),
         alpakaTune::hint::preferred(4u));
     CHECK(compiled.preferredIndex() == 2u);
 }
@@ -177,8 +177,7 @@ TEST_CASE("fixed scheduling refills its pool and proves finite exhaustion", "[sp
     for(bool queued : {false, true})
     {
         auto config = configFor(queued);
-        auto tunables
-            = alpakaTune::TunableBundle{value(alpakaTune::autoCandidates(alpakaTune::domain::interval(1, 15)))};
+        auto tunables = alpakaTune::TunableBundle{value(alpakaTune::autoCandidates(alpakaTune::interval(1, 15)))};
         auto tuner = alpakaTune::makeTuner(config, tunables, device, alpakaTune::customMetric("cost"));
         auto ids = std::set<std::size_t>{};
         for(unsigned run{}; run < 200u && !tuner.completed(); ++run)
@@ -211,10 +210,8 @@ TEST_CASE("every built-in strategy selects registered IDs as the catalog grows",
         auto config = configFor();
         config.strategy = strategy;
         auto tunables = alpakaTune::TunableBundle{
-            value(
-                alpakaTune::autoCandidates(
-                    alpakaTune::domain::compileInterval<1u, 8u>(alpakaTune::hint::logarithmic))),
-            child(alpakaTune::autoCandidates(alpakaTune::domain::interval(1, 1'000'000'000)))};
+            value(alpakaTune::autoCandidates(alpakaTune::compileInterval<1u, 8u>(alpakaTune::hint::logarithmic))),
+            child(alpakaTune::autoCandidates(alpakaTune::interval(1, 1'000'000'000)))};
         config.space.maximumCandidates = 12u;
         auto tuner = alpakaTune::makeTuner(config, tunables, device, alpakaTune::customMetric("cost"));
         for(unsigned run{}; run < 300u && !tuner.completed(); ++run)
@@ -235,13 +232,13 @@ TEST_CASE("dependent domains reject cycles and constrain child values", "[space]
     auto device = hostDevice();
     auto config = configFor();
     auto tunables = alpakaTune::TunableBundle{
-        value(alpakaTune::autoCandidates(alpakaTune::domain::interval(1, 4))),
+        value(alpakaTune::autoCandidates(alpakaTune::interval(1, 4))),
         child(
             alpakaTune::autoCandidates(
-                alpakaTune::domain::dependent(
-                    alpakaTune::domain::interval(1, 4),
+                alpakaTune::dependent(
+                    alpakaTune::interval(1, 4),
                     value,
-                    [](int parent) { return alpakaTune::domain::interval(1, parent); })))};
+                    [](int parent) { return alpakaTune::interval(1, parent); })))};
     auto tuner = alpakaTune::makeTuner(config, tunables, device, alpakaTune::customMetric("cost"));
     auto queue = alpakaTune::makeQueue(device, alpaka::queueKind::nonBlocking, alpakaTune::timing::disabled);
     auto launch = alpaka::onHost::FrameSpec{Vec{1u}, Vec{1u}, alpaka::exec::cpuSerial};
@@ -256,16 +253,16 @@ TEST_CASE("dependent domains reject cycles and constrain child values", "[space]
     auto cyclic = alpakaTune::TunableBundle{
         value(
             alpakaTune::autoCandidates(
-                alpakaTune::domain::dependent(
-                    alpakaTune::domain::interval(1, 4),
+                alpakaTune::dependent(
+                    alpakaTune::interval(1, 4),
                     child,
-                    [](int p) { return alpakaTune::domain::interval(1, p); }))),
+                    [](int p) { return alpakaTune::interval(1, p); }))),
         child(
             alpakaTune::autoCandidates(
-                alpakaTune::domain::dependent(
-                    alpakaTune::domain::interval(1, 4),
+                alpakaTune::dependent(
+                    alpakaTune::interval(1, 4),
                     value,
-                    [](int p) { return alpakaTune::domain::interval(1, p); })))};
+                    [](int p) { return alpakaTune::interval(1, p); })))};
     CHECK_THROWS_AS(
         alpakaTune::makeTuner(config, cyclic, device, alpakaTune::customMetric("cost")),
         std::invalid_argument);
@@ -300,7 +297,7 @@ TEST_CASE("adaptive revisits continue after growth reaches its budget", "[space]
     config.selection = alpakaTune::SelectionPolicy::adaptive;
     config.maximumExecutions.reset();
     config.space.maximumCandidates = 3u;
-    auto tunables = alpakaTune::TunableBundle{value(alpakaTune::autoCandidates(alpakaTune::domain::interval(1, 100)))};
+    auto tunables = alpakaTune::TunableBundle{value(alpakaTune::autoCandidates(alpakaTune::interval(1, 100)))};
     auto tuner = alpakaTune::makeTuner(config, tunables, device, alpakaTune::customMetric("cost"));
     for(unsigned run{}; run < 20u; ++run)
     {
@@ -352,7 +349,7 @@ TEST_CASE("generated catalogs replay offline from compact or complete histories"
     auto queue = alpakaTune::makeQueue(device, alpaka::queueKind::nonBlocking, alpakaTune::timing::disabled);
     auto launch = alpaka::onHost::FrameSpec{Vec{1u}, Vec{1u}, alpaka::exec::cpuSerial};
     auto tunables
-        = alpakaTune::TunableBundle{value(alpakaTune::autoCandidates(alpakaTune::domain::interval(1, 1'000'000'000)))};
+        = alpakaTune::TunableBundle{value(alpakaTune::autoCandidates(alpakaTune::interval(1, 1'000'000'000)))};
     for(bool compact : {false, true})
     {
         auto config = configFor();

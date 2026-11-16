@@ -72,14 +72,14 @@ namespace alpakaTune::detail
         {
 #if ALPAKA_TUNE_HAS_JSON
             std::lock_guard lock{mutex};
-            if(file && writeFile && !pendingCaches.empty())
+            if(file && writeFile && !m_pendingCaches.empty())
             {
                 auto caches = std::unordered_map<std::string, nlohmann::json>{};
-                caches.reserve(pendingCaches.size());
-                for(auto const& [fingerprint, cache] : pendingCaches)
+                caches.reserve(m_pendingCaches.size());
+                for(auto const& [fingerprint, cache] : m_pendingCaches)
                     caches.emplace(fingerprint, *cache);
-                mergeAndWrite(schemaVersion, caches);
-                pendingCaches.clear();
+                mergeAndWrite(m_schemaVersion, caches);
+                m_pendingCaches.clear();
             }
 #endif
         }
@@ -94,7 +94,7 @@ namespace alpakaTune::detail
                 throw std::invalid_argument{"A staged persistence cache must not be null."};
             std::lock_guard lock{mutex};
             validateSchemaVersion(version);
-            pendingCaches[fingerprint] = std::move(cache);
+            m_pendingCaches[fingerprint] = std::move(cache);
         }
 
         /** @brief Return the newest staged snapshot without touching the filesystem.
@@ -104,8 +104,8 @@ namespace alpakaTune::detail
         {
             std::lock_guard lock{mutex};
             validateSchemaVersion(version);
-            auto const found = pendingCaches.find(fingerprint);
-            return found == pendingCaches.end() ? nullptr : found->second;
+            auto const found = m_pendingCaches.find(fingerprint);
+            return found == m_pendingCaches.end() ? nullptr : found->second;
         }
 
         /** @brief Copy all staged snapshots for diagnostics and tests. */
@@ -114,8 +114,8 @@ namespace alpakaTune::detail
             std::lock_guard lock{mutex};
             validateSchemaVersion(version);
             auto caches = std::unordered_map<std::string, nlohmann::json>{};
-            caches.reserve(pendingCaches.size());
-            for(auto const& [fingerprint, cache] : pendingCaches)
+            caches.reserve(m_pendingCaches.size());
+            for(auto const& [fingerprint, cache] : m_pendingCaches)
                 caches.emplace(fingerprint, *cache);
             return caches;
         }
@@ -135,9 +135,9 @@ namespace alpakaTune::detail
         /** @brief Lock this store to one persistence schema version. */
         void validateSchemaVersion(int version)
         {
-            if(schemaVersion != 0 && schemaVersion != version)
+            if(m_schemaVersion != 0 && m_schemaVersion != version)
                 throw std::logic_error{"One persistence file cannot contain multiple schema versions."};
-            schemaVersion = version;
+            m_schemaVersion = version;
         }
 
         /** @brief Merge staged contexts and atomically replace the JSON file. */
@@ -175,8 +175,8 @@ namespace alpakaTune::detail
             std::filesystem::rename(temporary, path);
         }
 
-        int schemaVersion{};
-        std::unordered_map<std::string, std::shared_ptr<nlohmann::json>> pendingCaches;
+        int m_schemaVersion{};
+        std::unordered_map<std::string, std::shared_ptr<nlohmann::json>> m_pendingCaches;
 #endif
     };
 
@@ -300,14 +300,14 @@ namespace alpakaTune::detail
         {
 #if ALPAKA_TUNE_HAS_JSON
             std::lock_guard lock{mutex};
-            if(file && writeFile && !pendingCaches.empty())
+            if(file && writeFile && !m_pendingCaches.empty())
             {
                 auto contexts = std::unordered_map<std::string, nlohmann::json>{};
-                contexts.reserve(pendingCaches.size());
-                for(auto const& [fingerprint, cache] : pendingCaches)
+                contexts.reserve(m_pendingCaches.size());
+                for(auto const& [fingerprint, cache] : m_pendingCaches)
                     contexts.emplace(fingerprint, sampledHistoryContext(*cache));
                 mergeAndWrite(contexts);
-                pendingCaches.clear();
+                m_pendingCaches.clear();
             }
 #endif
         }
@@ -319,15 +319,15 @@ namespace alpakaTune::detail
             if(!cache)
                 throw std::invalid_argument{"A staged history cache must not be null."};
             std::lock_guard lock{mutex};
-            pendingCaches[fingerprint] = std::move(cache);
+            m_pendingCaches[fingerprint] = std::move(cache);
         }
 
         /** @brief Return the unsampled same-process cache for one fingerprint. */
         [[nodiscard]] auto stagedCache(std::string const& fingerprint) -> std::shared_ptr<nlohmann::json const>
         {
             std::lock_guard lock{mutex};
-            auto const found = pendingCaches.find(fingerprint);
-            return found == pendingCaches.end() ? nullptr : found->second;
+            auto const found = m_pendingCaches.find(fingerprint);
+            return found == m_pendingCaches.end() ? nullptr : found->second;
         }
 #endif
 
@@ -369,7 +369,7 @@ namespace alpakaTune::detail
             std::filesystem::rename(temporary, path);
         }
 
-        std::unordered_map<std::string, std::shared_ptr<nlohmann::json>> pendingCaches;
+        std::unordered_map<std::string, std::shared_ptr<nlohmann::json>> m_pendingCaches;
 #endif
     };
 
@@ -387,8 +387,8 @@ namespace alpakaTune::detail
             auto const key
                 = file ? file->string() + "\nread=" + (readFile ? "1" : "0") + "\nwrite=" + (writeFile ? "1" : "0")
                        : std::string{"<memory>"};
-            std::lock_guard lock{mutex};
-            auto& store = stores[key];
+            std::lock_guard lock{m_mutex};
+            auto& store = m_stores[key];
             if(!store)
                 store = std::make_shared<CompleteHistoryStore>(std::move(file), readFile, writeFile);
             return store;
@@ -399,9 +399,9 @@ namespace alpakaTune::detail
         {
             auto snapshot = std::vector<std::shared_ptr<CompleteHistoryStore>>{};
             {
-                std::lock_guard lock{mutex};
-                snapshot.reserve(stores.size());
-                for(auto const& [key, store] : stores)
+                std::lock_guard lock{m_mutex};
+                snapshot.reserve(m_stores.size());
+                for(auto const& [key, store] : m_stores)
                 {
                     static_cast<void>(key);
                     snapshot.push_back(store);
@@ -412,8 +412,8 @@ namespace alpakaTune::detail
         }
 
     private:
-        std::mutex mutex;
-        std::unordered_map<std::string, std::shared_ptr<CompleteHistoryStore>> stores;
+        std::mutex m_mutex;
+        std::unordered_map<std::string, std::shared_ptr<CompleteHistoryStore>> m_stores;
     };
 
     /** @brief Access the process-wide complete-history registry itself. */
@@ -445,8 +445,8 @@ namespace alpakaTune::detail
             auto const key
                 = file ? file->string() + "\nread=" + (readFile ? "1" : "0") + "\nwrite=" + (writeFile ? "1" : "0")
                        : std::string{"<memory>"};
-            std::lock_guard lock{mutex};
-            auto& store = stores[key];
+            std::lock_guard lock{m_mutex};
+            auto& store = m_stores[key];
             if(!store)
                 store = std::make_shared<HistoryStore>(std::move(file), readFile, writeFile);
             return store;
@@ -457,9 +457,9 @@ namespace alpakaTune::detail
         {
             auto snapshot = std::vector<std::shared_ptr<HistoryStore>>{};
             {
-                std::lock_guard lock{mutex};
-                snapshot.reserve(stores.size());
-                for(auto const& [key, store] : stores)
+                std::lock_guard lock{m_mutex};
+                snapshot.reserve(m_stores.size());
+                for(auto const& [key, store] : m_stores)
                 {
                     static_cast<void>(key);
                     snapshot.push_back(store);
@@ -470,8 +470,8 @@ namespace alpakaTune::detail
         }
 
     private:
-        std::mutex mutex;
-        std::unordered_map<std::string, std::shared_ptr<HistoryStore>> stores;
+        std::mutex m_mutex;
+        std::unordered_map<std::string, std::shared_ptr<HistoryStore>> m_stores;
     };
 
     /** @brief Access the process-wide compact-history registry itself. */

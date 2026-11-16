@@ -14,7 +14,7 @@ namespace alpakaTune::timing
     inline constexpr auto enabled = alpaka::timing::enabled;
     inline constexpr auto disabled = alpaka::timing::disabled;
 
-    template<typename Type>
-    concept Timing = alpaka::concepts::Timing<Type>;
+    template<typename T_Type>
+    concept Timing = alpaka::concepts::Timing<T_Type>;
 
 } // namespace alpakaTune::timing

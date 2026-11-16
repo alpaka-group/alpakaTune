@@ -67,6 +67,9 @@ jobs:
           - { compiler: clang, version: "20", cuda: "no", hip: "no", container: "ubuntu:24.04" }
           - { compiler: clang, version: "21", cuda: "no", hip: "no", container: "ubuntu:24.04" }
           - { compiler: clang, version: "21", cuda: "no", hip: "no", container: "ubuntu:24.04", tbb: "on" }
+          # clang-tidy naming checks on public headers, tests and examples (see .clang-tidy);
+          # metrics are enabled so that the optional metrics headers are checked as well
+          - { compiler: clang, version: "21", cuda: "no", hip: "no", container: "ubuntu:24.04", clang_tidy: "on", metrics: "on", papi: "off" }
           - { compiler: nvcc, version: "", cuda: "12.5", hip: "no", container: "nvidia/cuda:12.5.1-devel-ubuntu24.04" }
           - { compiler: nvcc, version: "", cuda: "12.6", hip: "no", container: "nvidia/cuda:12.6.3-devel-ubuntu24.04" }
           - { compiler: nvcc, version: "", cuda: "12.8", hip: "no", container: "nvidia/cuda:12.8.1-devel-ubuntu24.04" }
@@ -171,6 +174,12 @@ jobs:
                               --slave /usr/bin/clang++ clang++ /usr/bin/clang++-${{ matrix.config.version }}
           apt install -y libomp-${{ matrix.config.version }}-dev
 
+      - name: Install clang-tidy
+        if: matrix.config.clang_tidy == 'on'
+        run: |
+          apt-get update
+          apt-get install -y clang-tidy-${{ matrix.config.version }}
+
       # ROCm
       - name: Install ROCm
         if: matrix.config.hip != 'no'
@@ -237,6 +246,7 @@ jobs:
                    -DCMAKE_HIP_ARCHITECTURES=gfx906 -DAMDGPU_TARGETS=gfx906' || '' }} \
                 ${{ matrix.config.tbb == 'on' && '-Dalpaka_DEP_TBB=ON' || '' }} \
                 ${{ matrix.config.metrics == 'on' && '-DalpakaTune_DEP_METRICS=ON' || '' }} \
+                ${{ matrix.config.clang_tidy == 'on' && '-DalpakaTune_CLANG_TIDY=ON' || '' }} \
                 ${{ matrix.config.papi == 'off' && '-DalpakaMetrics_DEP_PAPI=OFF' || '' }} \
                 ${{ matrix.config.papi == 'on' && '-DalpakaMetrics_DEP_PAPI=ON' || '' }} \
                 ${{ matrix.config.sanitizer == 'asan' && '-Dalpaka_ASAN=ON' || '' }} \

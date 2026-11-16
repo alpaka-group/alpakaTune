@@ -18,7 +18,7 @@
 namespace alpakaTune
 {
 
-    template<typename TunablesType, typename Device, typename MetricPolicy = metric::Timing>
+    template<typename T_TunablesType, typename T_Device, typename T_MetricPolicy = metric::Timing>
     class Tuner;
 
     namespace detail
@@ -67,7 +67,7 @@ namespace alpakaTune
         }
 
     private:
-        template<typename TunablesType, typename Device, typename MetricPolicy>
+        template<typename T_TunablesType, typename T_Device, typename T_MetricPolicy>
         friend class Tuner;
 
         explicit ConfigurationValidity(std::shared_ptr<detail::ConfigurationValidityState> state)
@@ -118,7 +118,7 @@ namespace alpakaTune
     /** @brief Clock source used for synchronized kernel runtime observations. */
     enum class RuntimeMeasurementSource
     {
-        hostClock, ///< Host wall clock around a synchronized Alpaka launch.
+        hostClock, ///< Host wall clock around a synchronized alpaka launch.
         deviceEvent, ///< Backend device-event timestamps around the kernel.
     };
 
