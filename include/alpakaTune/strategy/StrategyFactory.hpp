@@ -14,71 +14,75 @@
 #include <memory>
 #include <stdexcept>
 
-namespace alpakaTune {
+namespace alpakaTune
+{
 
-class ExhaustiveStrategy final : public ParameterStrategy {
-public:
-  [[nodiscard]] auto recommend(StrategyContext const &context)
-      -> ParameterConfiguration override {
-    auto const dimensions = context.parameterSizes();
-    auto configuration = ParameterConfiguration(dimensions.size(), 0.0f);
-    auto candidate = m_nextCandidate++;
-    for (std::size_t position = dimensions.size(); position > 0u; --position) {
-      auto const dimension = position - 1u;
-      auto const size = dimensions[dimension];
-      auto const index = candidate % size;
-      candidate /= size;
-      configuration[dimension] = size == 1u ? 0.0f
-                                            : static_cast<float>(index) /
-                                                  static_cast<float>(size - 1u);
+    class ExhaustiveStrategy final : public ParameterStrategy
+    {
+    public:
+        [[nodiscard]] auto recommend(StrategyContext const& context) -> ParameterConfiguration override
+        {
+            auto const dimensions = context.parameterSizes();
+            auto configuration = ParameterConfiguration(dimensions.size(), 0.0f);
+            auto candidate = m_nextCandidate++;
+            for(std::size_t position = dimensions.size(); position > 0u; --position)
+            {
+                auto const dimension = position - 1u;
+                auto const size = dimensions[dimension];
+                auto const index = candidate % size;
+                candidate /= size;
+                configuration[dimension]
+                    = size == 1u ? 0.0f : static_cast<float>(index) / static_cast<float>(size - 1u);
+            }
+            return configuration;
+        }
+
+        [[nodiscard]] auto supportsCandidateCatalog() const noexcept -> bool override
+        {
+            return true;
+        }
+
+        [[nodiscard]] auto recommendCandidate(StrategyContext const& context) -> std::optional<std::size_t> override
+        {
+            auto const count = context.candidateCount();
+            if(count == 0u)
+                return std::nullopt;
+            for(std::size_t attempt{}; attempt < count; ++attempt)
+            {
+                auto const id = m_nextCandidate++ % count;
+                if(context.candidateAvailable(id))
+                    return id;
+            }
+            return std::nullopt;
+        }
+
+    private:
+        std::size_t m_nextCandidate{};
+    };
+
+    [[nodiscard]] inline auto makeParameterStrategy(
+        StrategyKind kind,
+        std::uint64_t seed,
+        LearnedModelContextDescriptor const* learnedContext = nullptr,
+        std::filesystem::path const& learnedModel = {},
+        LearnedHybridOptions learnedOptions = {}) -> std::unique_ptr<ParameterStrategy>
+    {
+        switch(kind)
+        {
+        case StrategyKind::exhaustive:
+            return std::make_unique<ExhaustiveStrategy>();
+        case StrategyKind::random:
+            return std::make_unique<RandomStrategy>(seed);
+        case StrategyKind::simulatedAnnealing:
+            return std::make_unique<SimulatedAnnealingStrategy>(seed);
+        case StrategyKind::bayesianOptimization:
+            return std::make_unique<BayesianOptimizationStrategy>(seed);
+        case StrategyKind::learnedHybrid:
+            if(learnedContext == nullptr)
+                throw std::invalid_argument{"The learned-hybrid strategy requires a Tuner-owned model context."};
+            return std::make_unique<LearnedHybridStrategy>(learnedModel, *learnedContext, seed, learnedOptions);
+        }
+        throw std::logic_error{"Unknown alpakaTune strategy kind."};
     }
-    return configuration;
-  }
-
-  [[nodiscard]] auto supportsCandidateCatalog() const noexcept
-      -> bool override {
-    return true;
-  }
-  [[nodiscard]] auto recommendCandidate(StrategyContext const &context)
-      -> std::optional<std::size_t> override {
-    auto const count = context.candidateCount();
-    if (count == 0u)
-      return std::nullopt;
-    for (std::size_t attempt{}; attempt < count; ++attempt) {
-      auto const id = m_nextCandidate++ % count;
-      if (context.candidateAvailable(id))
-        return id;
-    }
-    return std::nullopt;
-  }
-
-private:
-  std::size_t m_nextCandidate{};
-};
-
-[[nodiscard]] inline auto makeParameterStrategy(
-    StrategyKind kind, std::uint64_t seed,
-    LearnedModelContextDescriptor const *learnedContext = nullptr,
-    std::filesystem::path const &learnedModel = {},
-    LearnedHybridOptions learnedOptions = {})
-    -> std::unique_ptr<ParameterStrategy> {
-  switch (kind) {
-  case StrategyKind::exhaustive:
-    return std::make_unique<ExhaustiveStrategy>();
-  case StrategyKind::random:
-    return std::make_unique<RandomStrategy>(seed);
-  case StrategyKind::simulatedAnnealing:
-    return std::make_unique<SimulatedAnnealingStrategy>(seed);
-  case StrategyKind::bayesianOptimization:
-    return std::make_unique<BayesianOptimizationStrategy>(seed);
-  case StrategyKind::learnedHybrid:
-    if (learnedContext == nullptr)
-      throw std::invalid_argument{
-          "The learned-hybrid strategy requires a Tuner-owned model context."};
-    return std::make_unique<LearnedHybridStrategy>(
-        learnedModel, *learnedContext, seed, learnedOptions);
-  }
-  throw std::logic_error{"Unknown alpakaTune strategy kind."};
-}
 
 } // namespace alpakaTune
