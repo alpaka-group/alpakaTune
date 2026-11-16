@@ -67,17 +67,18 @@ FetchContent adds the dependency and its exported target:
    include(FetchContent)
    FetchContent_Declare(
      alpakaTune
-     GIT_REPOSITORY https://github.com/TimHanel00/alpakaTune.git
+     GIT_REPOSITORY https://github.com/alpaka-group/alpakaTune.git
      GIT_TAG dev)
    FetchContent_MakeAvailable(alpakaTune)
    add_executable(my_app main.cpp)
    target_link_libraries(my_app PRIVATE alpakaTune::alpakaTune)
    alpaka_finalize(my_app)
 
-``dev`` follows development; replace it with a tested commit for reproducible
-builds. With a local checkout, ``add_subdirectory(path/to/alpakaTune)`` can
-replace FetchContent. On ``dev``, an existing ``alpaka::alpaka`` target is
-reused; otherwise the tuner fetches its pinned alpaka revision.
+``dev`` follows development; use a release tag or a tested commit for
+reproducible builds. With a local checkout,
+``add_subdirectory(path/to/alpakaTune)`` can replace FetchContent. An existing
+``alpaka::alpaka`` target is reused; otherwise the tuner fetches its pinned
+alpaka revision.
 
 For an installed package, replace the FetchContent block with
 ``find_package(alpakaTune CONFIG REQUIRED)``. Keep the link and finalization

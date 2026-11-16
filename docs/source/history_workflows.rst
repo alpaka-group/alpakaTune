@@ -101,7 +101,7 @@ and other inputs that change performance or validity:
 .. code-block:: cpp
 
    auto tuner = alpakaTune::makeTuner(
-       config, tunables, device, executor, "solver-v2", problemSize);
+       config, tunables, device, "solver-v2", problemSize);
 
 Ordinary argument **values** and captured scoring-function state cannot be
 inferred as semantic identity automatically. Update the identity when their

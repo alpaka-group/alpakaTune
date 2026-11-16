@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parents[2]
 project = "alpakaTune"
 author = "Tim Hanel"
 copyright = "2025-2026, Tim Hanel"
-release = "3.0.0"
+release = "0.1.0"
 version = release
 root_doc = "index"
 
