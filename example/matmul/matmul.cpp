@@ -301,9 +301,9 @@ namespace alpakaTune::example::matmul
             if(selectConfiguration("NVIDIA A30", "Cuda", "alpaka::exec::GpuCuda", {17, 29, 19}, reject))
                 throw std::runtime_error{"Unmatched shape selected a winner"};
 
-            auto cases = []<std::size_t... Layouts>(std::index_sequence<Layouts...>)
+            auto cases = []<std::size_t... T_layouts>(std::index_sequence<T_layouts...>)
             {
-                return std::tuple{std::integral_constant<Index, Layouts>{}...};
+                return std::tuple{std::integral_constant<Index, T_layouts>{}...};
             }(std::make_index_sequence<tiles.size()>{});
             auto testShape = [&]<Index M, Index N, Index K>(Configuration<M, N, K, 0, 256, 1>)
             {

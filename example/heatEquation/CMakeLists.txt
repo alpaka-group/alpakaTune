@@ -1,11 +1,11 @@
 # Copyright 2026 Tim Hanel
 # SPDX-License-Identifier: MPL-2.0
 
-FetchContent_GetProperties(alpaka3 SOURCE_DIR alpakaTune_HEAT_DEFAULT_UPSTREAM_SOURCE)
+FetchContent_GetProperties(alpaka SOURCE_DIR alpakaTune_HEAT_DEFAULT_UPSTREAM_SOURCE)
 set(alpakaTune_HEAT_UPSTREAM_SOURCE
     "${alpakaTune_HEAT_DEFAULT_UPSTREAM_SOURCE}"
     CACHE PATH
-    "alpaka3 source providing the original heat-equation baseline"
+    "alpaka source providing the original heat-equation baseline"
 )
 set(alpakaTune_HEAT_SOURCE_REVISION
     "unrecorded"
@@ -19,7 +19,7 @@ set(alpakaTune_HEAT_WINNERS_HEADER
     "Header with independently measured heat-equation winners"
 )
 if(NOT EXISTS "${alpakaTune_HEAT_UPSTREAM_SOURCE}/example/heatEquation2D/src/StencilKernel.hpp")
-    message(FATAL_ERROR "Set alpakaTune_HEAT_UPSTREAM_SOURCE to the alpaka3 source tree for the heat-equation baseline")
+    message(FATAL_ERROR "Set alpakaTune_HEAT_UPSTREAM_SOURCE to the alpaka source tree for the heat-equation baseline")
 endif()
 
 foreach(mode IN ITEMS search replay)

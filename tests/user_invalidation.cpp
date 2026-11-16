@@ -60,27 +60,27 @@ namespace
         return config;
     }
 
-    template<typename Device>
+    template<typename T_Device>
     struct Fixture
     {
         using Index = alpaka::Vec<std::size_t, 1u>;
         using Queue = ALPAKA_TYPEOF(
             alpakaTune::makeQueue(
-                std::declval<Device&>(),
+                std::declval<T_Device&>(),
                 alpaka::queueKind::nonBlocking,
                 alpakaTune::timing::enabled));
         using HostBuffer = ALPAKA_TYPEOF(alpaka::onHost::allocHost<int>(Index{1u}));
         using DeviceBuffer
-            = ALPAKA_TYPEOF(alpaka::onHost::allocLike(std::declval<Device&>(), std::declval<HostBuffer&>()));
+            = ALPAKA_TYPEOF(alpaka::onHost::allocLike(std::declval<T_Device&>(), std::declval<HostBuffer&>()));
 
-        Device device;
+        T_Device device;
         Queue queue;
         HostBuffer host;
         DeviceBuffer output;
         ALPAKA_TYPEOF(alpaka::onHost::FrameSpec{Index{1u}, Index{1u}, alpaka::exec::cpuSerial})
         frameSpec;
 
-        explicit Fixture(Device selected)
+        explicit Fixture(T_Device selected)
             : device(std::move(selected))
             , queue(alpakaTune::makeQueue(device, alpaka::queueKind::nonBlocking, alpakaTune::timing::enabled))
             , host(alpaka::onHost::allocHost<int>(Index{1u}))

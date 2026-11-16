@@ -45,7 +45,7 @@ Type candidates and vectors
 ---------------------------
 
 Use ``CTypes`` when a candidate is itself a type. For compile-time launch
-vectors, both Alpaka ``CVec`` and ``std::integer_sequence`` are accepted:
+vectors, both alpaka ``CVec`` and ``std::integer_sequence`` are accepted:
 
 .. code-block:: cpp
 

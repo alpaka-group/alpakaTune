@@ -73,15 +73,15 @@ namespace alpakaTune
             double elapsedSeconds{};
         };
 
-        template<typename Device, bool Enabled>
+        template<typename T_Device, bool T_enabled>
         struct MeasurementTimerStorage
         {
         };
 
-        template<typename Device>
-        struct MeasurementTimerStorage<Device, true>
+        template<typename T_Device>
+        struct MeasurementTimerStorage<T_Device, true>
         {
-            std::optional<timing::KernelTimer<Device>> timer;
+            std::optional<timing::KernelTimer<T_Device>> timer;
         };
 
         /** Device placeholder of a tuner whose context is not restricted to a device.
@@ -155,32 +155,32 @@ namespace alpakaTune
             return std::exp(-relativeSlowdown / temperature);
         }
 
-        template<FixedString Name>
+        template<FixedString T_name>
         inline constexpr bool isReservedLaunchName
-            = sameName<Name, frameExtentName> || sameName<Name, numFramesName> || sameName<Name, numThreadsName>
-              || sameName<Name, numBlocksName>;
+            = sameName<T_name, frameExtentName> || sameName<T_name, numFramesName> || sameName<T_name, numThreadsName>
+              || sameName<T_name, numBlocksName>;
 
         /** Launch candidates must keep the dimension of the value they replace. */
-        template<typename Candidate, typename Reference>
+        template<typename T_Candidate, typename T_Reference>
         inline constexpr bool matchesLaunchDimension
-            = alpaka::trait::GetVec_t<std::remove_cvref_t<Candidate>>::dim()
-              == alpaka::trait::GetVec_t<std::remove_cvref_t<Reference>>::dim();
+            = alpaka::trait::GetVec_t<std::remove_cvref_t<T_Candidate>>::dim()
+              == alpaka::trait::GetVec_t<std::remove_cvref_t<T_Reference>>::dim();
 
         /** Whether two launch specifications of one type carry the same values. */
-        template<typename Spec>
-        [[nodiscard]] auto sameLaunchValues(Spec const& lhs, Spec const& rhs) -> bool
+        template<typename T_Spec>
+        [[nodiscard]] auto sameLaunchValues(T_Spec const& lhs, T_Spec const& rhs) -> bool
         {
-            if constexpr(alpaka::onHost::isFrameSpec_v<Spec>)
+            if constexpr(alpaka::onHost::isFrameSpec_v<T_Spec>)
                 return lhs.getNumFrames() == rhs.getNumFrames() && lhs.getFrameExtents() == rhs.getFrameExtents();
             else
                 return lhs.getNumBlocks() == rhs.getNumBlocks() && lhs.getNumThreads() == rhs.getNumThreads();
         }
 
         /** Convert a launch candidate to the index type of the value it replaces. */
-        template<typename Reference>
+        template<typename T_Reference>
         [[nodiscard]] constexpr auto toLaunchIndexType(auto const& candidate)
         {
-            using Index = typename alpaka::trait::GetVec_t<std::remove_cvref_t<Reference>>::value_type;
+            using Index = typename alpaka::trait::GetVec_t<std::remove_cvref_t<T_Reference>>::value_type;
             using Candidate = std::remove_cvref_t<decltype(candidate)>;
             if constexpr(std::same_as<typename alpaka::trait::GetVec_t<Candidate>::value_type, Index>)
                 return candidate;
@@ -239,12 +239,12 @@ namespace alpakaTune
          * Predicates receive std::type_identity<Argument> so that they remain constant
          * expressions for arguments carrying runtime state.
          */
-        template<typename... Arguments>
+        template<typename... T_Arguments>
         struct TuningContext
         {
-            std::tuple<Arguments...> arguments;
+            std::tuple<T_Arguments...> arguments;
 
-            constexpr explicit TuningContext(Arguments const&... entries) : arguments{entries...}
+            constexpr explicit TuningContext(T_Arguments const&... entries) : arguments{entries...}
             {
             }
 
@@ -253,14 +253,14 @@ namespace alpakaTune
             {
                 auto index = std::size_t{0u};
                 auto found = false;
-                ((found = found || alpaka::onHost::concepts::Device<Arguments>, index += found ? 0u : 1u), ...);
+                ((found = found || alpaka::onHost::concepts::Device<T_Arguments>, index += found ? 0u : 1u), ...);
                 return index;
             }();
             /** Whether the context is restricted to, and checked against, a device. */
-            static constexpr bool hasDevice = deviceIndex < sizeof...(Arguments);
+            static constexpr bool hasDevice = deviceIndex < sizeof...(T_Arguments);
             using DeviceType = typename std::conditional_t<
                 hasDevice,
-                std::tuple_element<deviceIndex, std::tuple<Arguments..., UnboundDevice>>,
+                std::tuple_element<deviceIndex, std::tuple<T_Arguments..., UnboundDevice>>,
                 std::type_identity<UnboundDevice>>::type;
 
             /** The first device argument; only available when hasDevice. */
@@ -298,8 +298,8 @@ namespace alpakaTune
             }
         };
 
-        template<typename... Arguments>
-        TuningContext(Arguments const&...) -> TuningContext<std::decay_t<Arguments const>...>;
+        template<typename... T_Arguments>
+        TuningContext(T_Arguments const&...) -> TuningContext<std::decay_t<T_Arguments const>...>;
 
         inline constexpr auto isMetricArgument
             = []<typename T>(std::type_identity<T>) { return isCustomMetricToken<T>; };
@@ -337,8 +337,8 @@ namespace alpakaTune
         }
 
         /** Sorted identity names of a context, used when writing persistent data. */
-        template<typename... Arguments>
-        [[nodiscard]] auto contextNames(TuningContext<Arguments...> const& context) -> std::vector<std::string>
+        template<typename... T_Arguments>
+        [[nodiscard]] auto contextNames(TuningContext<T_Arguments...> const& context) -> std::vector<std::string>
         {
             auto names = std::vector<std::string>{};
             std::apply(
@@ -407,11 +407,11 @@ namespace alpakaTune
             return seed;
         }
 
-        template<FixedString Name, typename Value>
+        template<FixedString T_name, typename T_Value>
         struct SelectedCompileValue
         {
-            static constexpr auto name = Name;
-            using value_type = Value;
+            static constexpr auto name = T_name;
+            using value_type = T_Value;
         };
 
         template<typename T>
@@ -423,10 +423,10 @@ namespace alpakaTune
             }
         };
 
-        template<typename T, T... Values>
-        struct LaunchValue<std::integer_sequence<T, Values...>>
+        template<typename T, T... T_values>
+        struct LaunchValue<std::integer_sequence<T, T_values...>>
         {
-            [[nodiscard]] static constexpr auto get() -> alpaka::CVec<T, Values...>
+            [[nodiscard]] static constexpr auto get() -> alpaka::CVec<T, T_values...>
             {
                 return {};
             }
@@ -438,53 +438,53 @@ namespace alpakaTune
             return LaunchValue<T>::get();
         }
 
-        template<FixedString Name, typename... Values>
+        template<FixedString T_name, typename... T_Values>
         consteval auto findSelectedCompileIndex() -> std::size_t
         {
-            static_assert((sameName<Name, Values::name> || ...), "The compile-time marker was not selected.");
-            constexpr auto matches = std::array{sameName<Name, Values::name>...};
+            static_assert((sameName<T_name, T_Values::name> || ...), "The compile-time marker was not selected.");
+            constexpr auto matches = std::array{sameName<T_name, T_Values::name>...};
             for(auto index = std::size_t{}; index < matches.size(); ++index)
                 if(matches[index])
                     return index;
             return matches.size();
         }
 
-        template<FixedString Name, typename... Values>
+        template<FixedString T_name, typename... T_Values>
         struct FindSelectedCompile
         {
-            using selected_type
-                = std::tuple_element_t<findSelectedCompileIndex<Name, Values...>(), std::tuple<Values...>>;
-            using type = typename selected_type::value_type;
+            using SelectedType
+                = std::tuple_element_t<findSelectedCompileIndex<T_name, T_Values...>(), std::tuple<T_Values...>>;
+            using type = typename SelectedType::value_type;
         };
 
-        template<typename Values, std::size_t Index = 0u, typename Callable>
-        void dispatchCVal(std::size_t selectedIndex, Callable&& callable)
+        template<typename T_Values, std::size_t T_index = 0u, typename T_Callable>
+        void dispatchCVal(std::size_t selectedIndex, T_Callable&& callable)
         {
-            if constexpr(Index == Values::size)
+            if constexpr(T_index == T_Values::size)
             {
                 throw std::out_of_range{"A compile-time tunable candidate index is out of range."};
             }
             else
             {
-                if(selectedIndex == Index)
+                if(selectedIndex == T_index)
                 {
-                    using Selected = std::tuple_element_t<Index, typename Values::values>;
-                    std::invoke(std::forward<Callable>(callable), std::type_identity<Selected>{});
+                    using Selected = std::tuple_element_t<T_index, typename T_Values::values>;
+                    std::invoke(std::forward<T_Callable>(callable), std::type_identity<Selected>{});
                     return;
                 }
-                dispatchCVal<Values, Index + 1u>(selectedIndex, std::forward<Callable>(callable));
+                dispatchCVal<T_Values, T_index + 1u>(selectedIndex, std::forward<T_Callable>(callable));
             }
         }
 
-        template<typename Tuple, std::size_t Index = 0u, typename Callable>
-        void forEachTupleType(Callable&& callable)
+        template<typename T_Tuple, std::size_t T_index = 0u, typename T_Callable>
+        void forEachTupleType(T_Callable&& callable)
         {
-            if constexpr(Index < std::tuple_size_v<Tuple>)
+            if constexpr(T_index < std::tuple_size_v<T_Tuple>)
             {
                 std::invoke(
-                    std::forward<Callable>(callable),
-                    std::type_identity<std::tuple_element_t<Index, Tuple>>{});
-                forEachTupleType<Tuple, Index + 1u>(std::forward<Callable>(callable));
+                    std::forward<T_Callable>(callable),
+                    std::type_identity<std::tuple_element_t<T_index, T_Tuple>>{});
+                forEachTupleType<T_Tuple, T_index + 1u>(std::forward<T_Callable>(callable));
             }
         }
 
@@ -503,7 +503,7 @@ namespace alpakaTune
          * Tuner::enqueue then delegates to it, so applications launch through such a
          * queue exactly as through an alpaka queue. See <alpakaTune/metrics.hpp>.
          */
-        template<typename Queue>
+        template<typename T_Queue>
         struct Enqueue
         {
             static constexpr bool enabled = false;
@@ -527,17 +527,17 @@ namespace alpakaTune
      * tune for an exact problem size, use one tuner instance per problem size, for
      * example by passing the size as a context string to makeTuner().
      */
-    template<typename TunablesType, typename Context, typename MetricPolicy>
+    template<typename T_TunablesType, typename T_Context, typename T_MetricPolicy>
     class Tuner
     {
     public:
-        using Traits = detail::TunablesTraits<TunablesType>;
-        using Entries = typename Traits::entries_type;
+        using Traits = detail::TunablesTraits<T_TunablesType>;
+        using Entries = typename Traits::EntriesType;
         static constexpr std::size_t dimensionCount = Traits::dimensionCount;
         // The executor is part of the launch identity. Histories produced before
         // that identity was persisted must not be reused by a newer tuner.
         static constexpr int completeHistorySchemaVersion = 13;
-        static constexpr bool usesCustomMetric = detail::isCustomMetricToken<MetricPolicy>;
+        static constexpr bool usesCustomMetric = detail::isCustomMetricToken<T_MetricPolicy>;
         static constexpr bool tunesFrameSpec
             = Traits::template has<detail::numFramesName> || Traits::template has<detail::frameExtentName>;
         static constexpr bool tunesThreadSpec
@@ -545,8 +545,8 @@ namespace alpakaTune
         static_assert(
             !(tunesFrameSpec && tunesThreadSpec),
             "A tuner cannot combine FrameSpec and ThreadSpec parameters.");
-        using Device = typename Context::DeviceType;
-        static constexpr bool deviceBound = Context::hasDevice;
+        using Device = typename T_Context::DeviceType;
+        static constexpr bool deviceBound = T_Context::hasDevice;
 
         /** @brief Construct a tuner from a validated policy and identity components.
          *
@@ -557,10 +557,10 @@ namespace alpakaTune
             TunerConfig defaults,
             std::shared_ptr<detail::HistoryStore> history,
             std::shared_ptr<detail::CompleteHistoryStore> completeHistory,
-            TunablesType tunables,
-            Context context,
+            T_TunablesType tunables,
+            T_Context context,
             std::string metricName,
-            MetricPolicy metricPolicy = {})
+            T_MetricPolicy metricPolicy = {})
             : m_defaults(std::move(defaults))
             , m_history(std::move(history))
             , m_completeHistory(std::move(completeHistory))
@@ -575,7 +575,7 @@ namespace alpakaTune
                 throw std::invalid_argument{"A tuning metric needs a name."};
             if(m_defaults.budget)
             {
-                if constexpr(!detail::isElapsedTimeMetric<MetricPolicy>)
+                if constexpr(!detail::isElapsedTimeMetric<T_MetricPolicy>)
                     throw std::invalid_argument{"Benefit budgeting requires timing or elapsedTimeMetric()."};
                 m_budget.emplace(*m_defaults.budget);
             }
@@ -867,26 +867,26 @@ namespace alpakaTune
          * The function is called only after submission eligibility has been checked.
          * Exceptions and invalid scores leave that launch awaiting a valid metric.
          */
-        template<typename... Values>
-        requires(detail::acceptsMetricInputs<MetricPolicy, Values...>)
-        void provideMetrics(Values&&... values)
+        template<typename... T_Values>
+        requires(detail::acceptsMetricInputs<T_MetricPolicy, T_Values...>)
+        void provideMetrics(T_Values&&... values)
         {
             requirePendingMetric();
             if(m_budget && m_pendingMetric->measure)
             {
                 auto const start = std::chrono::steady_clock::now();
-                auto const value = std::invoke(m_metricPolicy.function, std::forward<Values>(values)...);
+                auto const value = std::invoke(m_metricPolicy.function, std::forward<T_Values>(values)...);
                 m_budgetPendingHostCost
                     += std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
                 provideMetric(value);
             }
             else
             {
-                provideMetric(std::invoke(m_metricPolicy.function, std::forward<Values>(values)...));
+                provideMetric(std::invoke(m_metricPolicy.function, std::forward<T_Values>(values)...));
             }
         }
 
-        template<typename Queue, typename FrameSpec, typename Kernel, typename... Args>
+        template<typename T_Queue, typename T_FrameSpec, typename T_Kernel, typename... T_Args>
         /** @brief Select and perform exactly one kernel launch.
          *
          * The application owns call count and lifetime. Depending on mode and queue
@@ -910,13 +910,13 @@ namespace alpakaTune
          * alpaka::timing::enabled).
          */
         void enqueue(
-            Queue const& queue,
-            FrameSpec const& frameSpec,
-            alpaka::KernelBundle<Kernel, Args...> const& prototype)
+            T_Queue const& queue,
+            T_FrameSpec const& frameSpec,
+            alpaka::KernelBundle<T_Kernel, T_Args...> const& prototype)
         {
-            if constexpr(plugin::Enqueue<Queue>::enabled)
+            if constexpr(plugin::Enqueue<T_Queue>::enabled)
             {
-                plugin::Enqueue<Queue>::enqueue(*this, queue, frameSpec, prototype);
+                plugin::Enqueue<T_Queue>::enqueue(*this, queue, frameSpec, prototype);
                 return;
             }
             if(m_budget)
@@ -935,17 +935,17 @@ namespace alpakaTune
          * Mirrors alpaka's Queue::enqueue(spec, kernel, args...) and forwards to the
          * KernelBundle overload.
          */
-        template<typename Queue, typename LaunchSpec, typename Kernel, typename... Args>
-        requires(!alpaka::concepts::KernelBundle<Kernel>)
-        void enqueue(Queue const& queue, LaunchSpec const& launchSpec, Kernel const& kernel, Args&&... args)
+        template<typename T_Queue, typename T_LaunchSpec, typename T_Kernel, typename... T_Args>
+        requires(!alpaka::concepts::KernelBundle<T_Kernel>)
+        void enqueue(T_Queue const& queue, T_LaunchSpec const& launchSpec, T_Kernel const& kernel, T_Args&&... args)
         {
             enqueue(
                 queue,
                 launchSpec,
-                alpaka::KernelBundle{kernel, alpaka::onHost::makeAccessibleOnAcc(std::forward<Args>(args))...});
+                alpaka::KernelBundle{kernel, alpaka::onHost::makeAccessibleOnAcc(std::forward<T_Args>(args))...});
         }
 
-        template<typename Queue, typename FrameSpec, typename Kernel, typename... Args>
+        template<typename T_Queue, typename T_FrameSpec, typename T_Kernel, typename... T_Args>
         /** @brief Perform one launch and return its selection/timing diagnostics.
          *
          * Measured GPU launches have the synchronization overhead documented on
@@ -953,21 +953,21 @@ namespace alpakaTune
          * can also inspect info().instrumentationOverheadWarning.
          */
         [[nodiscard]] auto enqueueObserved(
-            Queue const& queue,
-            FrameSpec const& frameSpec,
-            alpaka::KernelBundle<Kernel, Args...> const& prototype) -> LaunchObservation
+            T_Queue const& queue,
+            T_FrameSpec const& frameSpec,
+            alpaka::KernelBundle<T_Kernel, T_Args...> const& prototype) -> LaunchObservation
         {
             if(m_budget)
                 return enqueueBudgeted(queue, frameSpec, prototype);
             m_recommendationSecondsSinceLastLaunch = 0.0;
             bindQueueDevice(queue);
             validatePrototype(prototype);
-            auto const fingerprint = makeFingerprint<FrameSpec, decltype(prototype)>(frameSpec, prototype);
+            auto const fingerprint = makeFingerprint<T_FrameSpec, decltype(prototype)>(frameSpec, prototype);
             bindFingerprint(
                 fingerprint,
                 detail::typeName<typename std::remove_cvref_t<decltype(prototype)>::KernelFn>(),
-                launchDescription<FrameSpec>());
-            bindLaunchValidator<Queue>(frameSpec, prototype);
+                launchDescription<T_FrameSpec>());
+            bindLaunchValidator<T_Queue>(frameSpec, prototype);
             initialiseScheduling();
             revalidateOnLaunchChange(frameSpec);
             reconcileUserInvalidations();
@@ -988,12 +988,12 @@ namespace alpakaTune
                 finishTuningAtBudget(TunerCompletionReason::maximumRetiredConfigurations);
 
             using Bundle = std::remove_cvref_t<decltype(prototype)>;
-            initialiseCompileVariants<Queue, FrameSpec, Bundle>();
+            initialiseCompileVariants<T_Queue, T_FrameSpec, Bundle>();
             auto const selection = m_terminal ? detail::CandidateQueue::Selection{m_bestCandidate, false, false, false}
                                               : nextCandidate();
             auto const reuseLaunch = m_explorationComplete && !m_terminal;
             auto const candidate = selection.candidateIndex;
-            LaunchCall<Queue, FrameSpec, Bundle> call{
+            LaunchCall<T_Queue, T_FrameSpec, Bundle> call{
                 .tuner = this,
                 .queue = &queue,
                 .frameSpec = &frameSpec,
@@ -1041,11 +1041,11 @@ namespace alpakaTune
                 .learnedAdapterUpdateCount = tunerInfo.learnedAdapterUpdateCount};
         }
 
-        template<typename Queue, typename FrameSpec, typename Kernel, typename... Args>
+        template<typename T_Queue, typename T_FrameSpec, typename T_Kernel, typename... T_Args>
         void tune(
-            Queue const& queue,
-            FrameSpec const& frameSpec,
-            alpaka::KernelBundle<Kernel, Args...> const& prototype)
+            T_Queue const& queue,
+            T_FrameSpec const& frameSpec,
+            alpaka::KernelBundle<T_Kernel, T_Args...> const& prototype)
         {
             enqueue(queue, frameSpec, prototype);
         }
@@ -1413,8 +1413,8 @@ namespace alpakaTune
             stageCache(candidate, true);
         }
 
-        template<typename Queue, typename Spec, typename Bundle>
-        void bindBudgetContext(Queue const& queue, Spec const& spec, Bundle const& bundle)
+        template<typename T_Queue, typename T_Spec, typename T_Bundle>
+        void bindBudgetContext(T_Queue const& queue, T_Spec const& spec, T_Bundle const& bundle)
         {
             static constexpr char tag{};
             bindQueueDevice(queue);
@@ -1425,18 +1425,18 @@ namespace alpakaTune
                                            "specification type."};
                 if(!launchValuesChanged(spec))
                     return;
-                bindLaunchValidator<Queue>(spec, bundle);
+                bindLaunchValidator<T_Queue>(spec, bundle);
                 revalidateMeasuredCandidates();
                 return;
             }
             validatePrototype(bundle);
             bindFingerprint(
                 makeFingerprint(spec, bundle),
-                detail::typeName<typename Bundle::KernelFn>(),
-                launchDescription<Spec>());
+                detail::typeName<typename T_Bundle::KernelFn>(),
+                launchDescription<T_Spec>());
             static_cast<void>(launchValuesChanged(spec));
-            bindLaunchValidator<Queue>(spec, bundle);
-            initialiseCompileVariants<Queue, Spec, Bundle>();
+            bindLaunchValidator<T_Queue>(spec, bundle);
+            initialiseCompileVariants<T_Queue, T_Spec, T_Bundle>();
             initialiseScheduling();
             ensureBudgetStorage();
             m_budgetColdStart = !currentBestCandidate().has_value();
@@ -1447,11 +1447,11 @@ namespace alpakaTune
             m_budgetContextTag = &tag;
         }
 
-        template<typename Queue, typename Spec, typename Kernel, typename... Args>
+        template<typename T_Queue, typename T_Spec, typename T_Kernel, typename... T_Args>
         auto enqueueBudgeted(
-            Queue const& queue,
-            Spec const& spec,
-            alpaka::KernelBundle<Kernel, Args...> const& bundle,
+            T_Queue const& queue,
+            T_Spec const& spec,
+            alpaka::KernelBundle<T_Kernel, T_Args...> const& bundle,
             bool observed = true) -> LaunchObservation
         {
             auto const contextBound = m_budgetContextTag != nullptr;
@@ -1466,7 +1466,7 @@ namespace alpakaTune
             reconcileUserInvalidations();
             reconcileMissingMetric();
             if(!production)
-                bindLaunchValidator<Queue>(spec, bundle);
+                bindLaunchValidator<T_Queue>(spec, bundle);
             auto const selected = production
                                       ? detail::CandidateQueue::Selection{*m_budgetIncumbent, false, false, false}
                                       : nextBudgetCandidate();
@@ -1477,14 +1477,14 @@ namespace alpakaTune
                     throw std::invalid_argument{"A measured tuning launch requires a timing-enabled queue."};
             auto const hadIncumbent = m_budgetIncumbent.has_value();
             auto const incumbentSeconds = m_budgetIncumbent ? m_budgetStatistics[*m_budgetIncumbent].median : 0.0;
-            using Bundle = alpaka::KernelBundle<Kernel, Args...>;
+            using Bundle = alpaka::KernelBundle<T_Kernel, T_Args...>;
             if(m_budgetDispatchCandidate != selected.candidateIndex)
             {
                 auto const key = compileVariantKey(indicesFor(selected.candidateIndex));
                 m_budgetCachedDispatch = m_compileVariantIndices.at(key);
                 m_budgetDispatchCandidate = selected.candidateIndex;
             }
-            LaunchCall<Queue, Spec, Bundle> call{this, &queue, &spec, &bundle, std::nullopt};
+            LaunchCall<T_Queue, T_Spec, Bundle> call{this, &queue, &spec, &bundle, std::nullopt};
             m_compileVariants[m_budgetCachedDispatch](
                 &call,
                 selected.candidateIndex,
@@ -1546,20 +1546,20 @@ namespace alpakaTune
                 throw std::logic_error{"The most recent enqueue is not awaiting a custom metric."};
         }
 
-        template<typename Queue, typename FrameSpec, typename Kernel, typename... Args>
+        template<typename T_Queue, typename T_FrameSpec, typename T_Kernel, typename... T_Args>
         [[nodiscard]] auto tryFastReplay(
-            Queue const& queue,
-            FrameSpec const& frameSpec,
-            alpaka::KernelBundle<Kernel, Args...> const& prototype) -> bool
+            T_Queue const& queue,
+            T_FrameSpec const& frameSpec,
+            alpaka::KernelBundle<T_Kernel, T_Args...> const& prototype) -> bool
         {
             bindQueueDevice(queue);
             validatePrototype(prototype);
-            auto const fingerprint = makeFingerprint<FrameSpec, decltype(prototype)>(frameSpec, prototype);
+            auto const fingerprint = makeFingerprint<T_FrameSpec, decltype(prototype)>(frameSpec, prototype);
             bindFingerprint(
                 fingerprint,
                 detail::typeName<typename std::remove_cvref_t<decltype(prototype)>::KernelFn>(),
-                launchDescription<FrameSpec>());
-            bindLaunchValidator<Queue>(frameSpec, prototype);
+                launchDescription<T_FrameSpec>());
+            bindLaunchValidator<T_Queue>(frameSpec, prototype);
             initialiseScheduling();
             revalidateOnLaunchChange(frameSpec);
             reconcileUserInvalidations();
@@ -1570,9 +1570,9 @@ namespace alpakaTune
                 throw std::logic_error{"The tuner terminated without a measured candidate to launch."};
 
             using Bundle = std::remove_cvref_t<decltype(prototype)>;
-            initialiseCompileVariants<Queue, FrameSpec, Bundle>();
+            initialiseCompileVariants<T_Queue, T_FrameSpec, Bundle>();
             auto const candidate = m_bestCandidate;
-            LaunchCall<Queue, FrameSpec, Bundle> call{
+            LaunchCall<T_Queue, T_FrameSpec, Bundle> call{
                 .tuner = this,
                 .queue = &queue,
                 .frameSpec = &frameSpec,
@@ -1591,8 +1591,8 @@ namespace alpakaTune
             return true;
         }
 
-        template<typename Bundle>
-        void validatePrototype(Bundle const& prototype) const
+        template<typename T_Bundle>
+        void validatePrototype(T_Bundle const& prototype) const
         {
             std::vector<std::string_view> markers;
             alpaka::apply(
@@ -1603,18 +1603,18 @@ namespace alpakaTune
                 m_tunables.entries());
         }
 
-        template<typename Argument>
+        template<typename T_Argument>
         static void collectPrototypeMarker(std::vector<std::string_view>& markers)
         {
-            using CleanArgument = std::remove_cvref_t<Argument>;
+            using CleanArgument = std::remove_cvref_t<T_Argument>;
             if constexpr(detail::isMarkedTunable<CleanArgument>)
                 markers.push_back(CleanArgument::name.view());
         }
 
-        template<typename Entry>
+        template<typename T_Entry>
         static void validateTunableConsumed(std::vector<std::string_view> const& markers)
         {
-            using CleanEntry = std::remove_cvref_t<Entry>;
+            using CleanEntry = std::remove_cvref_t<T_Entry>;
             auto const consumed
                 = detail::isReservedLaunchName<CleanEntry::name>
                   || std::find(markers.begin(), markers.end(), CleanEntry::nameView()) != markers.end();
@@ -1623,17 +1623,17 @@ namespace alpakaTune
                                             "reserved launch tunable."};
         }
 
-        template<FixedString Name, typename Arguments, std::size_t Index = 0u>
+        template<FixedString T_name, typename T_Arguments, std::size_t T_index = 0u>
         static consteval auto containsMarker() -> bool
         {
-            if constexpr(Index == std::tuple_size_v<Arguments>)
+            if constexpr(T_index == std::tuple_size_v<T_Arguments>)
                 return false;
             else
             {
-                using Argument = std::tuple_element_t<Index, Arguments>;
-                if constexpr(detail::isMarkedTunable<Argument> && detail::sameName<Name, Argument::name>)
+                using Argument = std::tuple_element_t<T_index, T_Arguments>;
+                if constexpr(detail::isMarkedTunable<Argument> && detail::sameName<T_name, Argument::name>)
                     return true;
-                return containsMarker<Name, Arguments, Index + 1u>();
+                return containsMarker<T_name, T_Arguments, T_index + 1u>();
             }
         }
 
@@ -1661,7 +1661,7 @@ namespace alpakaTune
                         [&]
                         {
                             using Entry = std::remove_cvref_t<decltype(entries)>;
-                            using Values = typename Entry::values_type;
+                            using Values = typename Entry::ValuesType;
                             if constexpr(detail::isAutomaticCandidates<Values>)
                             {
                                 constexpr auto offset = Traits::template dimensionOffset<Entry::name>;
@@ -1684,38 +1684,38 @@ namespace alpakaTune
 
         using CandidateIndices = std::array<std::size_t, dimensionCount>;
 
-        template<typename Names, std::size_t Parent = 0u, typename Function, typename... Args>
-        auto invokeParents(CandidateIndices const& indices, Function&& function, Args const&... args) const -> bool
+        template<typename T_Names, std::size_t T_parent = 0u, typename T_Function, typename... T_Args>
+        auto invokeParents(CandidateIndices const& indices, T_Function&& function, T_Args const&... args) const -> bool
         {
-            if constexpr(Parent == std::tuple_size_v<Names>)
-                return static_cast<bool>(std::invoke(std::forward<Function>(function), args...));
+            if constexpr(T_parent == std::tuple_size_v<T_Names>)
+                return static_cast<bool>(std::invoke(std::forward<T_Function>(function), args...));
             else
             {
-                using Name = std::tuple_element_t<Parent, Names>;
+                using Name = std::tuple_element_t<T_parent, T_Names>;
                 static_assert(Traits::template has<Name::name>, "A dependent domain refers to an undeclared parent.");
                 return withCandidateValue<Name::name>(
                     indices,
                     [&](auto const& value)
                     {
-                        return invokeParents<Names, Parent + 1u>(
+                        return invokeParents<T_Names, T_parent + 1u>(
                             indices,
-                            std::forward<Function>(function),
+                            std::forward<T_Function>(function),
                             args...,
                             value);
                     });
             }
         }
 
-        template<typename Entry>
-        void appendDomainProjector(Entry const& entry, std::vector<std::vector<std::size_t>>& parents)
+        template<typename T_Entry>
+        void appendDomainProjector(T_Entry const& entry, std::vector<std::vector<std::size_t>>& parents)
         {
-            using Values = typename Entry::values_type;
-            constexpr auto index = Traits::template index<Entry::name>;
-            constexpr auto offset = Traits::template dimensionOffset<Entry::name>;
+            using Values = typename T_Entry::ValuesType;
+            constexpr auto index = Traits::template index<T_Entry::name>;
+            constexpr auto offset = Traits::template dimensionOffset<T_Entry::name>;
             constexpr auto arity = detail::candidateDimensionCount<Values>;
-            if constexpr(requires { typename Values::parent_names; })
+            if constexpr(requires { typename Values::ParentNames; })
             {
-                using Names = typename Values::parent_names;
+                using Names = typename Values::ParentNames;
                 [&]<std::size_t... I>(std::index_sequence<I...>)
                 {
                     (parents[index].push_back(Traits::template index<std::tuple_element_t<I, Names>::name>), ...);
@@ -1724,7 +1724,7 @@ namespace alpakaTune
             m_domainProjectors.emplace_back(
                 [](Tuner const& self, CandidateIndices& indices, bool sampleGlobal)
                 {
-                    auto const& entry = std::get<Traits::template index<Entry::name>>(self.m_tunables.entries());
+                    auto const& entry = std::get<Traits::template index<T_Entry::name>>(self.m_tunables.entries());
                     if constexpr(detail::isAutomaticCandidates<Values> && arity == 1u)
                     {
                         auto projected = entry.values.project(indices[offset], sampleGlobal);
@@ -1736,7 +1736,7 @@ namespace alpakaTune
                     {
                         if(entry.values.alignment() > 1u)
                         {
-                            auto aligned = self.template withCandidateValue<Entry::name>(
+                            auto aligned = self.template withCandidateValue<T_Entry::name>(
                                 indices,
                                 [&](auto const& value)
                                 {
@@ -1764,12 +1764,12 @@ namespace alpakaTune
                                 return false;
                         }
                     }
-                    if constexpr(requires { typename Values::parent_names; })
+                    if constexpr(requires { typename Values::ParentNames; })
                     {
                         static_assert(
                             arity == 1u && detail::isRVals<Values>,
                             "Dependent domains currently require a scalar runtime child.");
-                        using Names = typename Values::parent_names;
+                        using Names = typename Values::ParentNames;
                         return self.template invokeParents<Names>(
                             indices,
                             [&](auto const&... values)
@@ -1903,11 +1903,11 @@ namespace alpakaTune
             }
         }
 
-        template<typename Value>
-        [[nodiscard]] static auto learnedNumericValue(Value const& value, std::size_t component)
+        template<typename T_Value>
+        [[nodiscard]] static auto learnedNumericValue(T_Value const& value, std::size_t component)
             -> std::optional<float>
         {
-            using Type = std::remove_cvref_t<Value>;
+            using Type = std::remove_cvref_t<T_Value>;
             auto convert = [](auto const& scalar) -> std::optional<float>
             {
                 using Scalar = std::remove_cvref_t<decltype(scalar)>;
@@ -1928,17 +1928,17 @@ namespace alpakaTune
             }
         }
 
-        template<typename Entry>
+        template<typename T_Entry>
         void appendLearnedDimensions(
             LearnedModelContextDescriptor& descriptor,
             std::size_t& offset,
-            Entry const& entry) const
+            T_Entry const& entry) const
         {
-            using Values = typename Entry::values_type;
+            using Values = typename T_Entry::ValuesType;
             constexpr auto arity = detail::candidateDimensionCount<Values>;
             auto kind = []
             {
-                if constexpr(detail::isReservedLaunchName<Entry::name>)
+                if constexpr(detail::isReservedLaunchName<T_Entry::name>)
                     return LearnedDimensionKind::launch;
                 else if constexpr(detail::isListedMdCandidates<Values>)
                     return LearnedDimensionKind::categorical;
@@ -1949,13 +1949,13 @@ namespace alpakaTune
                 else
                     return LearnedDimensionKind::categorical;
             }();
-            if constexpr(detail::isAutomaticCandidates<Values> && !detail::isReservedLaunchName<Entry::name>)
+            if constexpr(detail::isAutomaticCandidates<Values> && !detail::isReservedLaunchName<T_Entry::name>)
                 if(entry.values.categorical())
                     kind = LearnedDimensionKind::categorical;
             for(std::size_t component = 0u; component < arity; ++component)
             {
                 auto dimension = LearnedDimensionDescriptor{
-                    .name = std::string{Entry::nameView()},
+                    .name = std::string{T_Entry::nameView()},
                     .kind = kind,
                     .cardinality = m_dimensionSizes.at(offset + component),
                     .componentIndex = component,
@@ -1971,7 +1971,7 @@ namespace alpakaTune
                     indices[offset + component] = candidate;
                     auto numeric = std::optional<float>{};
                     if constexpr(!detail::isListedMdCandidates<Values>)
-                        static_cast<void>(withCandidateValue<Entry::name>(
+                        static_cast<void>(withCandidateValue<T_Entry::name>(
                             indices,
                             [&numeric, component](auto const& value)
                             {
@@ -2051,10 +2051,10 @@ namespace alpakaTune
             return descriptor;
         }
 
-        template<typename Entry>
-        void appendEntryDimensions(Entry const& entry)
+        template<typename T_Entry>
+        void appendEntryDimensions(T_Entry const& entry)
         {
-            using Values = typename Entry::values_type;
+            using Values = typename T_Entry::ValuesType;
             if constexpr(detail::isRVals<Values>)
             {
                 if constexpr(alpaka::isVector_v<typename Values::value_type> && !detail::isListedMdCandidates<Values>)
@@ -2079,20 +2079,20 @@ namespace alpakaTune
             }
         }
 
-        template<typename Entry, std::size_t... Dimension>
-        void appendRuntimeVectorDimensions(Entry const& entry, std::index_sequence<Dimension...>)
+        template<typename T_Entry, std::size_t... T_dimension>
+        void appendRuntimeVectorDimensions(T_Entry const& entry, std::index_sequence<T_dimension...>)
         {
-            (m_dimensionSizes.push_back(runtimeUniqueComponentCount(entry, Dimension)), ...);
+            (m_dimensionSizes.push_back(runtimeUniqueComponentCount(entry, T_dimension)), ...);
         }
 
-        template<typename Values, std::size_t... Dimension>
-        void appendCompileVectorDimensions(std::index_sequence<Dimension...>)
+        template<typename T_Values, std::size_t... T_dimension>
+        void appendCompileVectorDimensions(std::index_sequence<T_dimension...>)
         {
-            (m_dimensionSizes.push_back(detail::compileUniqueComponentCount<Values, Dimension>()), ...);
+            (m_dimensionSizes.push_back(detail::compileUniqueComponentCount<T_Values, T_dimension>()), ...);
         }
 
-        template<typename Entry>
-        static auto runtimeUniqueComponentCount(Entry const& entry, std::size_t dimension) -> std::size_t
+        template<typename T_Entry>
+        static auto runtimeUniqueComponentCount(T_Entry const& entry, std::size_t dimension) -> std::size_t
         {
             auto count = std::size_t{};
             auto const& values = entry.values.values();
@@ -2108,8 +2108,8 @@ namespace alpakaTune
             return count;
         }
 
-        template<typename Entry>
-        static auto runtimeUniqueComponent(Entry const& entry, std::size_t dimension, std::size_t uniqueIndex)
+        template<typename T_Entry>
+        static auto runtimeUniqueComponent(T_Entry const& entry, std::size_t dimension, std::size_t uniqueIndex)
         {
             auto unique = std::size_t{};
             auto const& values = entry.values.values();
@@ -2129,10 +2129,10 @@ namespace alpakaTune
             throw std::out_of_range{"A runtime vector component index is out of range."};
         }
 
-        template<typename Entry>
-        static auto entrySize(Entry const& entry) -> std::size_t
+        template<typename T_Entry>
+        static auto entrySize(T_Entry const& entry) -> std::size_t
         {
-            using Values = typename Entry::values_type;
+            using Values = typename T_Entry::ValuesType;
             if constexpr(detail::isRVals<Values>)
                 return entry.values.size();
             else
@@ -2149,16 +2149,16 @@ namespace alpakaTune
             return m_space.indices(candidate);
         }
 
-        template<FixedString Name, typename Callable>
+        template<FixedString T_name, typename T_Callable>
         [[nodiscard]] auto withCandidateValue(
             std::array<std::size_t, dimensionCount> const& indices,
-            Callable&& callable) const -> bool
+            T_Callable&& callable) const -> bool
         {
-            using Entry = typename Traits::template entry<Name>;
-            constexpr auto entryIndex = Traits::template index<Name>;
-            constexpr auto dimensionOffset = Traits::template dimensionOffset<Name>;
+            using Entry = typename Traits::template Entry<T_name>;
+            constexpr auto entryIndex = Traits::template index<T_name>;
+            constexpr auto dimensionOffset = Traits::template dimensionOffset<T_name>;
             auto const& entry = std::get<entryIndex>(m_tunables.entries());
-            using Values = typename Entry::values_type;
+            using Values = typename Entry::ValuesType;
             if constexpr(detail::isRVals<Values>)
             {
                 if constexpr(alpaka::isVector_v<typename Values::value_type> && !detail::isListedMdCandidates<Values>)
@@ -2167,12 +2167,12 @@ namespace alpakaTune
                     auto const value = Vector{
                         [&](auto dimension)
                         { return runtimeUniqueComponent(entry, dimension, indices[dimensionOffset + dimension]); }};
-                    return static_cast<bool>(std::invoke(std::forward<Callable>(callable), value));
+                    return static_cast<bool>(std::invoke(std::forward<T_Callable>(callable), value));
                 }
                 else
                 {
                     return static_cast<bool>(
-                        std::invoke(std::forward<Callable>(callable), entry.values.at(indices[dimensionOffset])));
+                        std::invoke(std::forward<T_Callable>(callable), entry.values.at(indices[dimensionOffset])));
                 }
             }
             else if constexpr(detail::isCTypes<Values> && detail::candidateDimensionCount<Values> > 1u)
@@ -2180,25 +2180,25 @@ namespace alpakaTune
                 return withCompileVectorCandidateValue<Values>(
                     indices,
                     dimensionOffset,
-                    std::forward<Callable>(callable));
+                    std::forward<T_Callable>(callable));
             }
             else
             {
-                return withCompileCandidateValue<Values>(indices[dimensionOffset], std::forward<Callable>(callable));
+                return withCompileCandidateValue<Values>(indices[dimensionOffset], std::forward<T_Callable>(callable));
             }
         }
 
-        template<typename Values, std::size_t Dimension = 0u>
+        template<typename T_Values, std::size_t T_dimension = 0u>
         [[nodiscard]] static auto compileVectorComponentAtRuntime(
             std::size_t selectedIndex,
             std::size_t requestedDimension)
-            -> decltype(detail::compileVectorComponent<std::tuple_element_t<0u, typename Values::values>, 0u>())
+            -> decltype(detail::compileVectorComponent<std::tuple_element_t<0u, typename T_Values::Values>, 0u>())
         {
-            if constexpr(Dimension < detail::candidateDimensionCount<Values>)
+            if constexpr(T_dimension < detail::candidateDimensionCount<T_Values>)
             {
-                if(requestedDimension == Dimension)
-                    return compileUniqueComponentAtRuntime<Values, Dimension>(selectedIndex);
-                return compileVectorComponentAtRuntime<Values, Dimension + 1u>(selectedIndex, requestedDimension);
+                if(requestedDimension == T_dimension)
+                    return compileUniqueComponentAtRuntime<T_Values, T_dimension>(selectedIndex);
+                return compileVectorComponentAtRuntime<T_Values, T_dimension + 1u>(selectedIndex, requestedDimension);
             }
             else
             {
@@ -2206,15 +2206,16 @@ namespace alpakaTune
             }
         }
 
-        template<typename Values, std::size_t Dimension, std::size_t UniqueIndex = 0u>
+        template<typename T_Values, std::size_t T_dimension, std::size_t T_uniqueIndex = 0u>
         [[nodiscard]] static auto compileUniqueComponentAtRuntime(std::size_t selectedIndex)
-            -> decltype(detail::compileVectorComponent<std::tuple_element_t<0u, typename Values::values>, Dimension>())
+            -> decltype(detail::
+                            compileVectorComponent<std::tuple_element_t<0u, typename T_Values::Values>, T_dimension>())
         {
-            if constexpr(UniqueIndex < detail::compileUniqueComponentCount<Values, Dimension>())
+            if constexpr(T_uniqueIndex < detail::compileUniqueComponentCount<T_Values, T_dimension>())
             {
-                if(selectedIndex == UniqueIndex)
-                    return detail::compileUniqueComponent<Values, Dimension, UniqueIndex>();
-                return compileUniqueComponentAtRuntime<Values, Dimension, UniqueIndex + 1u>(selectedIndex);
+                if(selectedIndex == T_uniqueIndex)
+                    return detail::compileUniqueComponent<T_Values, T_dimension, T_uniqueIndex>();
+                return compileUniqueComponentAtRuntime<T_Values, T_dimension, T_uniqueIndex + 1u>(selectedIndex);
             }
             else
             {
@@ -2222,54 +2223,56 @@ namespace alpakaTune
             }
         }
 
-        template<typename Values, typename Callable>
+        template<typename T_Values, typename T_Callable>
         [[nodiscard]] static auto withCompileVectorCandidateValue(
             std::array<std::size_t, dimensionCount> const& indices,
             std::size_t dimensionOffset,
-            Callable&& callable) -> bool
+            T_Callable&& callable) -> bool
         {
-            using Prototype = std::tuple_element_t<0u, typename Values::values>;
+            using Prototype = std::tuple_element_t<0u, typename T_Values::Values>;
             using Scalar = decltype(detail::compileVectorComponent<Prototype, 0u>());
-            constexpr auto dimensions = detail::candidateDimensionCount<Values>;
+            constexpr auto dimensions = detail::candidateDimensionCount<T_Values>;
             auto const value = alpaka::Vec<Scalar, dimensions>{
                 [&](auto dimension)
-                { return compileVectorComponentAtRuntime<Values>(indices[dimensionOffset + dimension], dimension); }};
-            return static_cast<bool>(std::invoke(std::forward<Callable>(callable), value));
+                {
+                    return compileVectorComponentAtRuntime<T_Values>(indices[dimensionOffset + dimension], dimension);
+                }};
+            return static_cast<bool>(std::invoke(std::forward<T_Callable>(callable), value));
         }
 
-        template<typename Values, std::size_t ValueIndex = 0u, typename Callable>
-        [[nodiscard]] static auto withCompileCandidateValue(std::size_t selectedIndex, Callable&& callable) -> bool
+        template<typename T_Values, std::size_t T_valueIndex = 0u, typename T_Callable>
+        [[nodiscard]] static auto withCompileCandidateValue(std::size_t selectedIndex, T_Callable&& callable) -> bool
         {
-            if constexpr(ValueIndex < Values::size)
+            if constexpr(T_valueIndex < T_Values::size)
             {
-                if(selectedIndex == ValueIndex)
+                if(selectedIndex == T_valueIndex)
                 {
-                    using Value = std::tuple_element_t<ValueIndex, typename Values::values>;
-                    if constexpr(detail::isCVals<Values>)
-                        return static_cast<bool>(std::invoke(std::forward<Callable>(callable), Value::value));
+                    using Value = std::tuple_element_t<T_valueIndex, typename T_Values::Values>;
+                    if constexpr(detail::isCVals<T_Values>)
+                        return static_cast<bool>(std::invoke(std::forward<T_Callable>(callable), Value::value));
                     else
                         return static_cast<bool>(
-                            std::invoke(std::forward<Callable>(callable), detail::launchValue<Value>()));
+                            std::invoke(std::forward<T_Callable>(callable), detail::launchValue<Value>()));
                 }
-                return withCompileCandidateValue<Values, ValueIndex + 1u>(
+                return withCompileCandidateValue<T_Values, T_valueIndex + 1u>(
                     selectedIndex,
-                    std::forward<Callable>(callable));
+                    std::forward<T_Callable>(callable));
             }
             throw std::out_of_range{"The compile-time candidate index is outside its tuning dimension."};
         }
 
-        template<typename Restriction>
+        template<typename T_Restriction>
         [[nodiscard]] auto restrictionAccepted(
-            Restriction const& restriction,
+            T_Restriction const& restriction,
             std::array<std::size_t, dimensionCount> const& indices) const -> bool
         {
-            if constexpr(requires { Restriction::second; })
+            if constexpr(requires { T_Restriction::second; })
             {
-                return withCandidateValue<Restriction::first>(
+                return withCandidateValue<T_Restriction::first>(
                     indices,
                     [this, &restriction, &indices](auto const& firstValue)
                     {
-                        return withCandidateValue<Restriction::second>(
+                        return withCandidateValue<T_Restriction::second>(
                             indices,
                             [&restriction, &firstValue](auto const& secondValue)
                             { return restriction.accepts(firstValue, secondValue); });
@@ -2277,7 +2280,7 @@ namespace alpakaTune
             }
             else
             {
-                return withCandidateValue<Restriction::first>(
+                return withCandidateValue<T_Restriction::first>(
                     indices,
                     [&restriction](auto const& value) { return restriction.accepts(value); });
             }
@@ -3142,13 +3145,13 @@ namespace alpakaTune
             throw std::logic_error{"The tuning scheduler has no admitted candidate."};
         }
 
-        template<typename Queue, typename FrameSpec, typename Bundle>
+        template<typename T_Queue, typename T_FrameSpec, typename T_Bundle>
         struct LaunchCall
         {
             Tuner* tuner;
-            Queue const* queue;
-            FrameSpec const* frameSpec;
-            Bundle const* prototype;
+            T_Queue const* queue;
+            T_FrameSpec const* frameSpec;
+            T_Bundle const* prototype;
             std::optional<double> runtimeSeconds;
         };
 
@@ -3171,30 +3174,30 @@ namespace alpakaTune
             return key.str();
         }
 
-        template<std::size_t EntryIndex, std::size_t DimensionOffset>
+        template<std::size_t T_entryIndex, std::size_t T_dimensionOffset>
         static void appendCompileVariantKey(
             std::ostringstream& key,
             std::array<std::size_t, dimensionCount> const& indices)
         {
-            if constexpr(EntryIndex < std::tuple_size_v<Entries>)
+            if constexpr(T_entryIndex < std::tuple_size_v<Entries>)
             {
-                using Entry = std::tuple_element_t<EntryIndex, Entries>;
-                using Values = typename Entry::values_type;
+                using Entry = std::tuple_element_t<T_entryIndex, Entries>;
+                using Values = typename Entry::ValuesType;
                 constexpr auto dimensions = detail::candidateDimensionCount<Values>;
                 if constexpr(detail::isCompileTimeCandidates<Values>)
                 {
                     for(std::size_t dimension = 0u; dimension < dimensions; ++dimension)
-                        key << Entry::nameView() << '[' << dimension << "]=" << indices[DimensionOffset + dimension]
+                        key << Entry::nameView() << '[' << dimension << "]=" << indices[T_dimensionOffset + dimension]
                             << ';';
                 }
-                appendCompileVariantKey<EntryIndex + 1u, DimensionOffset + dimensions>(key, indices);
+                appendCompileVariantKey<T_entryIndex + 1u, T_dimensionOffset + dimensions>(key, indices);
             }
         }
 
-        template<typename Queue, typename FrameSpec, typename Bundle>
+        template<typename T_Queue, typename T_FrameSpec, typename T_Bundle>
         void initialiseCompileVariants()
         {
-            auto const signature = detail::typeName<Bundle>() + "|" + detail::typeName<Queue>();
+            auto const signature = detail::typeName<T_Bundle>() + "|" + detail::typeName<T_Queue>();
             if(!m_compileVariants.empty())
             {
                 if(m_compileVariantSignature == signature)
@@ -3206,31 +3209,31 @@ namespace alpakaTune
                 m_compileVariantIndices.clear();
             }
             std::array<std::size_t, dimensionCount> indices{};
-            appendCompileVariants<Queue, FrameSpec, Bundle, 0u, 0u>(indices);
+            appendCompileVariants<T_Queue, T_FrameSpec, T_Bundle, 0u, 0u>(indices);
             m_compileVariantSignature = signature;
         }
 
         template<
-            typename Queue,
-            typename FrameSpec,
-            typename Bundle,
-            std::size_t EntryIndex,
-            std::size_t DimensionOffset,
-            typename... CompileValues>
+            typename T_Queue,
+            typename T_FrameSpec,
+            typename T_Bundle,
+            std::size_t T_entryIndex,
+            std::size_t T_dimensionOffset,
+            typename... T_CompileValues>
         void appendCompileVariants(std::array<std::size_t, dimensionCount>& indices)
         {
-            if constexpr(EntryIndex == std::tuple_size_v<Entries>)
+            if constexpr(T_entryIndex == std::tuple_size_v<Entries>)
             {
                 auto const key = compileVariantKey(indices);
                 m_compileVariantIndices.emplace(key, m_compileVariants.size());
                 m_compileValidators.emplace_back(
                     [](Tuner const& self, void const* rawLaunch, void const* rawBundle, CandidateIndices const& tuple)
                     {
-                        auto const& launch = *static_cast<FrameSpec const*>(rawLaunch);
-                        auto const& prototype = *static_cast<Bundle const*>(rawBundle);
-                        auto const bundle = self.template rebuildBundle<CompileValues...>(prototype, tuple);
-                        auto const& device = self.template contextDevice<Queue>();
-                        return self.template withLaunchSpec<CompileValues...>(
+                        auto const& launch = *static_cast<T_FrameSpec const*>(rawLaunch);
+                        auto const& prototype = *static_cast<T_Bundle const*>(rawBundle);
+                        auto const bundle = self.template rebuildBundle<T_CompileValues...>(prototype, tuple);
+                        auto const& device = self.template contextDevice<T_Queue>();
+                        return self.template withLaunchSpec<T_CompileValues...>(
                             device,
                             launch,
                             bundle,
@@ -3245,8 +3248,8 @@ namespace alpakaTune
                        bool endActivation,
                        bool trackExecution)
                     {
-                        auto& call = *static_cast<LaunchCall<Queue, FrameSpec, Bundle>*>(rawCall);
-                        call.tuner->template launchCandidate<CompileValues...>(
+                        auto& call = *static_cast<LaunchCall<T_Queue, T_FrameSpec, T_Bundle>*>(rawCall);
+                        call.tuner->template launchCandidate<T_CompileValues...>(
                             *call.queue,
                             *call.frameSpec,
                             *call.prototype,
@@ -3260,149 +3263,149 @@ namespace alpakaTune
             }
             else
             {
-                using Entry = std::tuple_element_t<EntryIndex, Entries>;
-                using Values = typename Entry::values_type;
+                using Entry = std::tuple_element_t<T_entryIndex, Entries>;
+                using Values = typename Entry::ValuesType;
                 constexpr auto dimensions = detail::candidateDimensionCount<Values>;
                 if constexpr(detail::isRVals<Values>)
                 {
                     appendCompileVariants<
-                        Queue,
-                        FrameSpec,
-                        Bundle,
-                        EntryIndex + 1u,
-                        DimensionOffset + dimensions,
-                        CompileValues...>(indices);
+                        T_Queue,
+                        T_FrameSpec,
+                        T_Bundle,
+                        T_entryIndex + 1u,
+                        T_dimensionOffset + dimensions,
+                        T_CompileValues...>(indices);
                 }
                 else if constexpr(detail::isCTypes<Values> && dimensions > 1u)
                 {
                     appendCompileVectorVariants<
-                        Queue,
-                        FrameSpec,
-                        Bundle,
-                        EntryIndex,
-                        DimensionOffset,
+                        T_Queue,
+                        T_FrameSpec,
+                        T_Bundle,
+                        T_entryIndex,
+                        T_dimensionOffset,
                         Values,
                         0u,
                         0u,
                         std::index_sequence<>,
-                        CompileValues...>(indices);
+                        T_CompileValues...>(indices);
                 }
                 else
                 {
                     appendCValVariants<
-                        Queue,
-                        FrameSpec,
-                        Bundle,
-                        EntryIndex,
-                        DimensionOffset,
+                        T_Queue,
+                        T_FrameSpec,
+                        T_Bundle,
+                        T_entryIndex,
+                        T_dimensionOffset,
                         Values,
                         0u,
-                        CompileValues...>(indices);
+                        T_CompileValues...>(indices);
                 }
             }
         }
 
         template<
-            typename Queue,
-            typename FrameSpec,
-            typename Bundle,
-            std::size_t EntryIndex,
-            std::size_t DimensionOffset,
-            typename Values,
-            std::size_t ValueIndex,
-            typename... CompileValues>
+            typename T_Queue,
+            typename T_FrameSpec,
+            typename T_Bundle,
+            std::size_t T_entryIndex,
+            std::size_t T_dimensionOffset,
+            typename T_Values,
+            std::size_t T_valueIndex,
+            typename... T_CompileValues>
         void appendCValVariants(std::array<std::size_t, dimensionCount>& indices)
         {
-            if constexpr(ValueIndex < Values::size)
+            if constexpr(T_valueIndex < T_Values::size)
             {
-                using Entry = std::tuple_element_t<EntryIndex, Entries>;
-                using Value = std::tuple_element_t<ValueIndex, typename Values::values>;
-                indices[DimensionOffset] = ValueIndex;
+                using Entry = std::tuple_element_t<T_entryIndex, Entries>;
+                using Value = std::tuple_element_t<T_valueIndex, typename T_Values::Values>;
+                indices[T_dimensionOffset] = T_valueIndex;
                 appendCompileVariants<
-                    Queue,
-                    FrameSpec,
-                    Bundle,
-                    EntryIndex + 1u,
-                    DimensionOffset + 1u,
-                    CompileValues...,
+                    T_Queue,
+                    T_FrameSpec,
+                    T_Bundle,
+                    T_entryIndex + 1u,
+                    T_dimensionOffset + 1u,
+                    T_CompileValues...,
                     detail::SelectedCompileValue<Entry::name, Value>>(indices);
                 appendCValVariants<
-                    Queue,
-                    FrameSpec,
-                    Bundle,
-                    EntryIndex,
-                    DimensionOffset,
-                    Values,
-                    ValueIndex + 1u,
-                    CompileValues...>(indices);
+                    T_Queue,
+                    T_FrameSpec,
+                    T_Bundle,
+                    T_entryIndex,
+                    T_dimensionOffset,
+                    T_Values,
+                    T_valueIndex + 1u,
+                    T_CompileValues...>(indices);
             }
         }
 
         template<
-            typename Queue,
-            typename FrameSpec,
-            typename Bundle,
-            std::size_t EntryIndex,
-            std::size_t DimensionOffset,
-            typename Values,
-            std::size_t VectorDimension,
-            std::size_t ValueIndex,
-            typename SelectedIndices,
-            typename... CompileValues>
+            typename T_Queue,
+            typename T_FrameSpec,
+            typename T_Bundle,
+            std::size_t T_entryIndex,
+            std::size_t T_dimensionOffset,
+            typename T_Values,
+            std::size_t T_vectorDimension,
+            std::size_t T_valueIndex,
+            typename T_SelectedIndices,
+            typename... T_CompileValues>
         void appendCompileVectorVariants(std::array<std::size_t, dimensionCount>& indices)
         {
-            constexpr auto dimensions = detail::candidateDimensionCount<Values>;
-            if constexpr(VectorDimension == dimensions)
+            constexpr auto dimensions = detail::candidateDimensionCount<T_Values>;
+            if constexpr(T_vectorDimension == dimensions)
             {
-                using Entry = std::tuple_element_t<EntryIndex, Entries>;
-                using Prototype = std::tuple_element_t<0u, typename Values::values>;
-                using Value = detail::reconstructCompileVector<Values, Prototype, SelectedIndices>;
+                using Entry = std::tuple_element_t<T_entryIndex, Entries>;
+                using Prototype = std::tuple_element_t<0u, typename T_Values::Values>;
+                using Value = detail::ReconstructCompileVector_t<T_Values, Prototype, T_SelectedIndices>;
                 appendCompileVariants<
-                    Queue,
-                    FrameSpec,
-                    Bundle,
-                    EntryIndex + 1u,
-                    DimensionOffset + dimensions,
-                    CompileValues...,
+                    T_Queue,
+                    T_FrameSpec,
+                    T_Bundle,
+                    T_entryIndex + 1u,
+                    T_dimensionOffset + dimensions,
+                    T_CompileValues...,
                     detail::SelectedCompileValue<Entry::name, Value>>(indices);
             }
-            else if constexpr(ValueIndex < detail::compileUniqueComponentCount<Values, VectorDimension>())
+            else if constexpr(T_valueIndex < detail::compileUniqueComponentCount<T_Values, T_vectorDimension>())
             {
-                indices[DimensionOffset + VectorDimension] = ValueIndex;
-                using NextIndices = detail::appendIndexSequence<SelectedIndices, ValueIndex>;
+                indices[T_dimensionOffset + T_vectorDimension] = T_valueIndex;
+                using NextIndices = detail::AppendIndexSequence_t<T_SelectedIndices, T_valueIndex>;
                 appendCompileVectorVariants<
-                    Queue,
-                    FrameSpec,
-                    Bundle,
-                    EntryIndex,
-                    DimensionOffset,
-                    Values,
-                    VectorDimension + 1u,
+                    T_Queue,
+                    T_FrameSpec,
+                    T_Bundle,
+                    T_entryIndex,
+                    T_dimensionOffset,
+                    T_Values,
+                    T_vectorDimension + 1u,
                     0u,
                     NextIndices,
-                    CompileValues...>(indices);
+                    T_CompileValues...>(indices);
                 appendCompileVectorVariants<
-                    Queue,
-                    FrameSpec,
-                    Bundle,
-                    EntryIndex,
-                    DimensionOffset,
-                    Values,
-                    VectorDimension,
-                    ValueIndex + 1u,
-                    SelectedIndices,
-                    CompileValues...>(indices);
+                    T_Queue,
+                    T_FrameSpec,
+                    T_Bundle,
+                    T_entryIndex,
+                    T_dimensionOffset,
+                    T_Values,
+                    T_vectorDimension,
+                    T_valueIndex + 1u,
+                    T_SelectedIndices,
+                    T_CompileValues...>(indices);
             }
         }
 
-        template<FixedString Name, typename... CompileValues>
+        template<FixedString T_name, typename... T_CompileValues>
         [[nodiscard]] auto valueFor(std::array<std::size_t, dimensionCount> const& indices) const
         {
-            using Entry = typename Traits::template entry<Name>;
-            constexpr auto entryIndex = Traits::template index<Name>;
-            constexpr auto dimensionOffset = Traits::template dimensionOffset<Name>;
+            using Entry = typename Traits::template Entry<T_name>;
+            constexpr auto entryIndex = Traits::template index<T_name>;
+            constexpr auto dimensionOffset = Traits::template dimensionOffset<T_name>;
             auto const& entry = std::get<entryIndex>(m_tunables.entries());
-            using Values = typename Entry::values_type;
+            using Values = typename Entry::ValuesType;
             if constexpr(detail::isRVals<Values>)
             {
                 if constexpr(alpaka::isVector_v<typename Values::value_type> && !detail::isListedMdCandidates<Values>)
@@ -3419,23 +3422,23 @@ namespace alpakaTune
             }
             else
             {
-                using Selected = typename detail::FindSelectedCompile<Name, CompileValues...>::type;
+                using Selected = typename detail::FindSelectedCompile<T_name, T_CompileValues...>::type;
                 return detail::launchValue<Selected>();
             }
         }
 
-        template<FixedString Name, typename... CompileValues>
+        template<FixedString T_name, typename... T_CompileValues>
         [[nodiscard]] auto launchValueFor(std::array<std::size_t, dimensionCount> const& indices) const
         {
-            using Entry = typename Traits::template entry<Name>;
-            using Values = typename Entry::values_type;
+            using Entry = typename Traits::template Entry<T_name>;
+            using Values = typename Entry::ValuesType;
             if constexpr(detail::isRVals<Values>)
             {
-                return valueFor<Name, CompileValues...>(indices);
+                return valueFor<T_name, T_CompileValues...>(indices);
             }
             else
             {
-                using Selected = typename detail::FindSelectedCompile<Name, CompileValues...>::type;
+                using Selected = typename detail::FindSelectedCompile<T_name, T_CompileValues...>::type;
                 if constexpr(detail::isCVals<Values>)
                     return Selected::value;
                 else
@@ -3449,32 +3452,33 @@ namespace alpakaTune
          * to the FrameSpec or ThreadSpec passed to enqueue here: the dimension must
          * agree, and the index type is converted to the spec's index type.
          */
-        template<FixedString Name, typename... CompileValues, typename Reference>
-        [[nodiscard]] auto checkedLaunchValue(std::array<std::size_t, dimensionCount> const& indices, Reference const&)
-            const
+        template<FixedString T_name, typename... T_CompileValues, typename T_Reference>
+        [[nodiscard]] auto checkedLaunchValue(
+            std::array<std::size_t, dimensionCount> const& indices,
+            T_Reference const&) const
         {
-            using Candidate = decltype(launchValueFor<Name, CompileValues...>(indices));
+            using Candidate = decltype(launchValueFor<T_name, T_CompileValues...>(indices));
             static_assert(
-                detail::matchesLaunchDimension<Candidate, Reference>,
+                detail::matchesLaunchDimension<Candidate, T_Reference>,
                 "Launch tunable candidates must have the same dimension as "
                 "the FrameSpec or ThreadSpec passed to enqueue.");
-            return detail::toLaunchIndexType<Reference>(launchValueFor<Name, CompileValues...>(indices));
+            return detail::toLaunchIndexType<T_Reference>(launchValueFor<T_name, T_CompileValues...>(indices));
         }
 
-        template<typename Argument, typename... CompileValues>
+        template<typename T_Argument, typename... T_CompileValues>
         [[nodiscard]] auto rebuildArgument(
-            Argument const& argument,
+            T_Argument const& argument,
             std::array<std::size_t, dimensionCount> const& indices) const
         {
-            if constexpr(detail::isMarkedTunable<Argument>)
-                return valueFor<Argument::name, CompileValues...>(indices);
+            if constexpr(detail::isMarkedTunable<T_Argument>)
+                return valueFor<T_Argument::name, T_CompileValues...>(indices);
             else
                 return argument;
         }
 
-        template<typename... CompileValues, typename Bundle>
+        template<typename... T_CompileValues, typename T_Bundle>
         [[nodiscard]] auto rebuildBundle(
-            Bundle const& prototype,
+            T_Bundle const& prototype,
             std::array<std::size_t, dimensionCount> const& indices) const
         {
             return alpaka::apply(
@@ -3482,7 +3486,7 @@ namespace alpakaTune
                 {
                     return alpaka::KernelBundle{
                         prototype.getKernelFn(),
-                        rebuildArgument<std::remove_cvref_t<decltype(arguments)>, CompileValues...>(
+                        rebuildArgument<std::remove_cvref_t<decltype(arguments)>, T_CompileValues...>(
                             arguments,
                             indices)...};
                 },
@@ -3490,24 +3494,24 @@ namespace alpakaTune
         }
 
         template<
-            typename... CompileValues,
-            typename LaunchDevice,
-            typename LaunchSpec,
-            typename Bundle,
-            typename Callable>
+            typename... T_CompileValues,
+            typename T_LaunchDevice,
+            typename T_LaunchSpec,
+            typename T_Bundle,
+            typename T_Callable>
         decltype(auto) withLaunchSpec(
-            LaunchDevice const& device,
-            LaunchSpec const& prototypeLaunch,
-            Bundle const& bundle,
+            T_LaunchDevice const& device,
+            T_LaunchSpec const& prototypeLaunch,
+            T_Bundle const& bundle,
             CandidateIndices const& indices,
-            Callable&& callable) const
+            T_Callable&& callable) const
         {
-            if constexpr(alpaka::onHost::isFrameSpec_v<std::remove_cvref_t<LaunchSpec>>)
+            if constexpr(alpaka::onHost::isFrameSpec_v<std::remove_cvref_t<T_LaunchSpec>>)
             {
                 auto const numFrames = [&]
                 {
                     if constexpr(Traits::template has<detail::numFramesName>)
-                        return checkedLaunchValue<detail::numFramesName, CompileValues...>(
+                        return checkedLaunchValue<detail::numFramesName, T_CompileValues...>(
                             indices,
                             prototypeLaunch.getNumFrames());
                     else
@@ -3516,7 +3520,7 @@ namespace alpakaTune
                 auto const frameExtent = [&]
                 {
                     if constexpr(Traits::template has<detail::frameExtentName>)
-                        return checkedLaunchValue<detail::frameExtentName, CompileValues...>(
+                        return checkedLaunchValue<detail::frameExtentName, T_CompileValues...>(
                             indices,
                             prototypeLaunch.getFrameExtents());
                     else
@@ -3525,7 +3529,7 @@ namespace alpakaTune
                 auto const frame = alpaka::onHost::FrameSpec{
                     numFrames,
                     frameExtent,
-                    std::remove_cvref_t<LaunchSpec>::getExecutor()};
+                    std::remove_cvref_t<T_LaunchSpec>::getExecutor()};
                 if constexpr(
                     Traits::template has<detail::numThreadsName> || Traits::template has<detail::numBlocksName>)
                 {
@@ -3533,7 +3537,7 @@ namespace alpakaTune
                     auto const blocks = [&]
                     {
                         if constexpr(Traits::template has<detail::numBlocksName>)
-                            return checkedLaunchValue<detail::numBlocksName, CompileValues...>(
+                            return checkedLaunchValue<detail::numBlocksName, T_CompileValues...>(
                                 indices,
                                 derived.getNumBlocks());
                         else
@@ -3542,7 +3546,7 @@ namespace alpakaTune
                     auto const threads = [&]
                     {
                         if constexpr(Traits::template has<detail::numThreadsName>)
-                            return checkedLaunchValue<detail::numThreadsName, CompileValues...>(
+                            return checkedLaunchValue<detail::numThreadsName, T_CompileValues...>(
                                 indices,
                                 derived.getNumThreads());
                         else
@@ -3559,12 +3563,12 @@ namespace alpakaTune
                     return std::invoke(callable, frame);
                 }
             }
-            else if constexpr(alpaka::onHost::isThreadSpec_v<std::remove_cvref_t<LaunchSpec>>)
+            else if constexpr(alpaka::onHost::isThreadSpec_v<std::remove_cvref_t<T_LaunchSpec>>)
             {
                 auto const blocks = [&]
                 {
                     if constexpr(Traits::template has<detail::numBlocksName>)
-                        return checkedLaunchValue<detail::numBlocksName, CompileValues...>(
+                        return checkedLaunchValue<detail::numBlocksName, T_CompileValues...>(
                             indices,
                             prototypeLaunch.getNumBlocks());
                     else
@@ -3573,20 +3577,20 @@ namespace alpakaTune
                 auto const threads = [&]
                 {
                     if constexpr(Traits::template has<detail::numThreadsName>)
-                        return checkedLaunchValue<detail::numThreadsName, CompileValues...>(
+                        return checkedLaunchValue<detail::numThreadsName, T_CompileValues...>(
                             indices,
                             prototypeLaunch.getNumThreads());
                     else
                         return prototypeLaunch.getNumThreads();
                 }();
                 auto const thread
-                    = alpaka::onHost::ThreadSpec{blocks, threads, std::remove_cvref_t<LaunchSpec>::getExecutor()};
+                    = alpaka::onHost::ThreadSpec{blocks, threads, std::remove_cvref_t<T_LaunchSpec>::getExecutor()};
                 return std::invoke(callable, thread);
             }
             else
             {
                 static_assert(
-                    alpaka::onHost::concepts::ThreadOrFrameSpec<std::remove_cvref_t<LaunchSpec>>,
+                    alpaka::onHost::concepts::ThreadOrFrameSpec<std::remove_cvref_t<T_LaunchSpec>>,
                     "alpakaTune::Tuner::enqueue requires "
                     "alpaka::onHost::FrameSpec or ThreadSpec.");
             }
@@ -3598,8 +3602,8 @@ namespace alpakaTune
          * records the first queue's device; it validates the shared candidate space
          * against that device and launches on whichever device each queue uses.
          */
-        template<typename Queue>
-        void bindQueueDevice(Queue const& queue)
+        template<typename T_Queue>
+        void bindQueueDevice(T_Queue const& queue)
         {
             if constexpr(deviceBound)
             {
@@ -3624,7 +3628,7 @@ namespace alpakaTune
         }
 
         /** @brief Device that validates the candidate space of this context. */
-        template<typename Queue>
+        template<typename T_Queue>
         [[nodiscard]] auto contextDevice() const -> decltype(auto)
         {
             if constexpr(deviceBound)
@@ -3633,7 +3637,7 @@ namespace alpakaTune
             }
             else
             {
-                using QueueDevice = std::remove_cvref_t<decltype(std::declval<Queue const&>().getDevice())>;
+                using QueueDevice = std::remove_cvref_t<decltype(std::declval<T_Queue const&>().getDevice())>;
                 if(!m_unboundDevice)
                     throw std::logic_error{"An unbound tuner takes its device from the current queue."};
                 return *static_cast<QueueDevice const*>(m_unboundDevice.get());
@@ -3662,11 +3666,13 @@ namespace alpakaTune
                 return "unbound";
         }
 
-        template<typename LaunchDevice, typename Spec, typename Bundle>
-        [[nodiscard]] auto hardwareLaunchLegal(LaunchDevice const& device, Spec const& spec, Bundle const& bundle)
-            const -> bool
+        template<typename T_LaunchDevice, typename T_Spec, typename T_Bundle>
+        [[nodiscard]] auto hardwareLaunchLegal(
+            T_LaunchDevice const& device,
+            T_Spec const& spec,
+            T_Bundle const& bundle) const -> bool
         {
-            if constexpr(alpaka::onHost::isFrameSpec_v<Spec>)
+            if constexpr(alpaka::onHost::isFrameSpec_v<T_Spec>)
             {
                 auto const extents = spec.getFrameExtents();
                 auto const frames = spec.getNumFrames();
@@ -3699,19 +3705,19 @@ namespace alpakaTune
                     threadProduct *= static_cast<std::size_t>(threads[d]);
                     blockProduct *= static_cast<std::size_t>(blocks[d]);
                 }
-                if constexpr(alpaka::isSeqExecutor(Spec::getExecutor()))
+                if constexpr(alpaka::isSeqExecutor(T_Spec::getExecutor()))
                     if(threadProduct != 1u)
                         return false;
                 return alpaka::onHost::getDynSharedMemBytes(spec, bundle) <= properties.sharedMemPerBlockBytes;
             }
         }
 
-        template<typename Queue, typename LaunchSpec, typename Bundle>
-        void bindLaunchValidator(LaunchSpec const& launch, Bundle const& bundle)
+        template<typename T_Queue, typename T_LaunchSpec, typename T_Bundle>
+        void bindLaunchValidator(T_LaunchSpec const& launch, T_Bundle const& bundle)
         {
             if constexpr(Traits::generatesCandidates)
             {
-                initialiseCompileVariants<Queue, LaunchSpec, Bundle>();
+                initialiseCompileVariants<T_Queue, T_LaunchSpec, T_Bundle>();
                 m_launchValidator = [launch, bundle](Tuner const& self, CandidateIndices const& indices)
                 {
                     return self.m_compileValidators.at(self.m_compileVariantIndices.at(
@@ -3720,11 +3726,11 @@ namespace alpakaTune
             }
         }
 
-        template<typename... CompileValues, typename Queue, typename LaunchSpec, typename Bundle>
+        template<typename... T_CompileValues, typename T_Queue, typename T_LaunchSpec, typename T_Bundle>
         void launchCandidate(
-            Queue const& queue,
-            LaunchSpec const& prototypeLaunch,
-            Bundle const& prototype,
+            T_Queue const& queue,
+            T_LaunchSpec const& prototypeLaunch,
+            T_Bundle const& prototype,
             std::size_t candidate,
             bool measure,
             bool beginActivation,
@@ -3733,12 +3739,12 @@ namespace alpakaTune
             std::optional<double>& runtimeSeconds)
         {
             auto const indices = indicesFor(candidate);
-            auto const bundle = rebuildBundle<CompileValues...>(prototype, indices);
+            auto const bundle = rebuildBundle<T_CompileValues...>(prototype, indices);
 
             auto launch = [&](auto const& launchQueue)
             {
                 auto const device = launchQueue.getDevice();
-                withLaunchSpec<CompileValues...>(
+                withLaunchSpec<T_CompileValues...>(
                     device,
                     prototypeLaunch,
                     bundle,
@@ -3886,21 +3892,22 @@ namespace alpakaTune
                          "tuner context.\n";
         }
 
-        template<typename LaunchSpec, typename Bundle>
-        [[nodiscard]] auto makeFingerprint(LaunchSpec const& launchSpec, Bundle const& prototype) const -> std::string
+        template<typename T_LaunchSpec, typename T_Bundle>
+        [[nodiscard]] auto makeFingerprint(T_LaunchSpec const& launchSpec, T_Bundle const& prototype) const
+            -> std::string
         {
-            using BundleType = std::remove_cvref_t<Bundle>;
+            using BundleType = std::remove_cvref_t<T_Bundle>;
             std::ostringstream identity;
             identity << "schema=" << completeHistorySchemaVersion << '\n';
             identity << "kernel=" << detail::typeName<typename BundleType::KernelFn>() << '\n';
             identity << "bundle=" << detail::typeName<BundleType>() << '\n';
             identity << "device=" << contextDeviceName() << '\n';
             identity << "metric=" << tuningMetricKindName(metricKind()) << ':' << m_metricName << '\n';
-            identity << "executor=" << detail::printable(std::remove_cvref_t<LaunchSpec>::getExecutor()) << '\n';
+            identity << "executor=" << detail::printable(std::remove_cvref_t<T_LaunchSpec>::getExecutor()) << '\n';
             // Launch values are not part of the identity, exactly like kernel
             // argument values: the problem size may live in either of them. See the
             // "Tuning context" documentation of makeTuner().
-            identity << "launch=" << launchDescription<LaunchSpec>() << '\n';
+            identity << "launch=" << launchDescription<T_LaunchSpec>() << '\n';
             for(auto const& entry : detail::contextNames(m_context))
                 identity << "context=" << entry << '\n';
             std::apply(
@@ -3921,10 +3928,10 @@ namespace alpakaTune
             return detail::hashFingerprint(identity.str());
         }
 
-        template<typename Entry>
-        static void appendTunableFingerprint(std::ostringstream& identity, Entry const& entry)
+        template<typename T_Entry>
+        static void appendTunableFingerprint(std::ostringstream& identity, T_Entry const& entry)
         {
-            using Values = typename Entry::values_type;
+            using Values = typename T_Entry::ValuesType;
             identity << entry.nameView() << '=';
             if constexpr(requires {
                              entry.values.minimum();
@@ -3975,37 +3982,37 @@ namespace alpakaTune
             return detail::hashFingerprint(identity.str());
         }
 
-        template<typename Restriction>
-        static void appendRestrictionFingerprint(std::ostringstream& identity, Restriction const&)
+        template<typename T_Restriction>
+        static void appendRestrictionFingerprint(std::ostringstream& identity, T_Restriction const&)
         {
-            using Type = std::remove_cvref_t<Restriction>;
+            using Type = std::remove_cvref_t<T_Restriction>;
             identity << "restriction=" << Type::first.view();
             if constexpr(requires { Type::second; })
                 identity << ':' << Type::second.view();
             identity << ':' << detail::typeName<Type>() << '\n';
         }
 
-        template<typename Values, std::size_t Index = 0u>
+        template<typename T_Values, std::size_t T_index = 0u>
         static void appendCValFingerprint(std::ostringstream& identity)
         {
-            if constexpr(Index < Values::size)
+            if constexpr(T_index < T_Values::size)
             {
-                using Value = std::tuple_element_t<Index, typename Values::values>;
-                if constexpr(detail::isCVals<Values>)
+                using Value = std::tuple_element_t<T_index, typename T_Values::Values>;
+                if constexpr(detail::isCVals<T_Values>)
                     identity << detail::printable(Value::value) << ',';
                 else
                     identity << detail::printable(Value{}) << ',';
-                appendCValFingerprint<Values, Index + 1u>(identity);
+                appendCValFingerprint<T_Values, T_index + 1u>(identity);
             }
         }
 
         /** @brief Type of a launch specification: frame or thread layout, vector
          * types (dimension, index type and compile-time extents) and executor.
          * Its runtime values are deliberately absent. */
-        template<typename LaunchSpec>
+        template<typename T_LaunchSpec>
         [[nodiscard]] static auto launchDescription() -> std::string
         {
-            using Spec = std::remove_cvref_t<LaunchSpec>;
+            using Spec = std::remove_cvref_t<T_LaunchSpec>;
             static_assert(
                 alpaka::onHost::concepts::ThreadOrFrameSpec<Spec>,
                 "alpakaTune::Tuner::enqueue requires "
@@ -4022,12 +4029,12 @@ namespace alpakaTune
         }
 
         /** @brief Records the launch values; true on the first call or a change. */
-        template<typename Spec>
-        [[nodiscard]] auto launchValuesChanged(Spec const& spec) -> bool
+        template<typename T_Spec>
+        [[nodiscard]] auto launchValuesChanged(T_Spec const& spec) -> bool
         {
-            if(m_lastLaunch && detail::sameLaunchValues(*static_cast<Spec const*>(m_lastLaunch.get()), spec))
+            if(m_lastLaunch && detail::sameLaunchValues(*static_cast<T_Spec const*>(m_lastLaunch.get()), spec))
                 return false;
-            m_lastLaunch = std::make_shared<Spec const>(spec);
+            m_lastLaunch = std::make_shared<T_Spec const>(spec);
             return true;
         }
 
@@ -4036,8 +4043,8 @@ namespace alpakaTune
          * The context is not restricted to launch values, so a measured candidate
          * may be illegal for the new values; it is rejected for the rest of the
          * context and the best remaining measured candidate replaces it. */
-        template<typename Spec>
-        void revalidateOnLaunchChange(Spec const& spec)
+        template<typename T_Spec>
+        void revalidateOnLaunchChange(T_Spec const& spec)
         {
             if(launchValuesChanged(spec))
                 revalidateMeasuredCandidates();
@@ -4570,16 +4577,16 @@ namespace alpakaTune
                 {"timestamp_unix_seconds", m_startedAtUnixSeconds + improvement.elapsedSeconds}};
         }
 
-        template<typename Entry>
+        template<typename T_Entry>
         void appendSerializedCandidateEntry(
             nlohmann::json& configuration,
             std::array<std::size_t, dimensionCount> const& indices) const
         {
-            static_cast<void>(withCandidateValue<Entry::name>(
+            static_cast<void>(withCandidateValue<T_Entry::name>(
                 indices,
                 [&configuration](auto const& value)
                 {
-                    configuration[std::string{Entry::name.view()}] = detail::printable(value);
+                    configuration[std::string{T_Entry::name.view()}] = detail::printable(value);
                     return true;
                 }));
         }
@@ -4598,10 +4605,10 @@ namespace alpakaTune
             return configuration;
         }
 
-        template<typename Value>
-        [[nodiscard]] static auto serializedCompactValue(Value const& value) -> nlohmann::json
+        template<typename T_Value>
+        [[nodiscard]] static auto serializedCompactValue(T_Value const& value) -> nlohmann::json
         {
-            using Type = std::remove_cvref_t<Value>;
+            using Type = std::remove_cvref_t<T_Value>;
             if constexpr(alpaka::isVector_v<Type>)
             {
                 auto result = nlohmann::json::array();
@@ -4623,16 +4630,16 @@ namespace alpakaTune
             }
         }
 
-        template<typename Entry>
+        template<typename T_Entry>
         void appendSerializedCompactCandidateEntry(
             nlohmann::json& configuration,
             std::array<std::size_t, dimensionCount> const& indices) const
         {
-            static_cast<void>(withCandidateValue<Entry::name>(
+            static_cast<void>(withCandidateValue<T_Entry::name>(
                 indices,
                 [&configuration](auto const& value)
                 {
-                    configuration[std::string{Entry::name.view()}] = serializedCompactValue(value);
+                    configuration[std::string{T_Entry::name.view()}] = serializedCompactValue(value);
                     return true;
                 }));
         }
@@ -4653,17 +4660,17 @@ namespace alpakaTune
             return configuration;
         }
 
-        template<typename Entry>
+        template<typename T_Entry>
         [[nodiscard]] auto resolveCompactEntry(
             nlohmann::json const& stored,
             std::array<std::size_t, dimensionCount>& indices) const -> bool
         {
-            using Values = typename Entry::values_type;
-            constexpr auto offset = Traits::template dimensionOffset<Entry::name>;
+            using Values = typename T_Entry::ValuesType;
+            constexpr auto offset = Traits::template dimensionOffset<T_Entry::name>;
             constexpr auto dimensions = detail::candidateDimensionCount<Values>;
             if constexpr(dimensions == 1u && requires { std::declval<Values>().minimum(); })
             {
-                auto const& entry = std::get<Traits::template index<Entry::name>>(m_tunables.entries());
+                auto const& entry = std::get<Traits::template index<T_Entry::name>>(m_tunables.entries());
                 auto const index = entry.values.indexOf(stored.template get<typename Values::value_type>());
                 if(!index)
                     return false;
@@ -4676,7 +4683,7 @@ namespace alpakaTune
                 {
                     indices[offset] = index;
                     auto matches = false;
-                    static_cast<void>(withCandidateValue<Entry::name>(
+                    static_cast<void>(withCandidateValue<T_Entry::name>(
                         indices,
                         [&stored, &matches](auto const& value)
                         {
@@ -4699,7 +4706,7 @@ namespace alpakaTune
                     {
                         indices[offset + dimension] = index;
                         auto componentMatches = false;
-                        static_cast<void>(withCandidateValue<Entry::name>(
+                        static_cast<void>(withCandidateValue<T_Entry::name>(
                             indices,
                             [&stored, &componentMatches, dimension](auto const& value)
                             {
@@ -4719,13 +4726,13 @@ namespace alpakaTune
             }
         }
 
-        template<typename Entry>
+        template<typename T_Entry>
         [[nodiscard]] auto resolveCompactConfigurationEntry(
             nlohmann::json const& configuration,
             std::array<std::size_t, dimensionCount>& indices) const -> bool
         {
-            auto const found = configuration.find(std::string{Entry::name.view()});
-            return found != configuration.end() && resolveCompactEntry<Entry>(*found, indices);
+            auto const found = configuration.find(std::string{T_Entry::name.view()});
+            return found != configuration.end() && resolveCompactEntry<T_Entry>(*found, indices);
         }
 
         [[nodiscard]] auto candidateForCompactConfiguration(nlohmann::json const& configuration) const
@@ -5136,10 +5143,10 @@ namespace alpakaTune
         TunerConfig m_defaults;
         std::shared_ptr<detail::HistoryStore> m_history;
         std::shared_ptr<detail::CompleteHistoryStore> m_completeHistory;
-        TunablesType m_tunables;
+        T_TunablesType m_tunables;
         /** makeTuner's context arguments, including the bound device if any.
          * Immutable: a different context requires a new tuner instance. */
-        Context const m_context;
+        T_Context const m_context;
         detail::MeasurementTimerStorage<Device, !usesCustomMetric> m_measurementTimer;
         /** First queue device of an unbound tuner; empty for a device-bound one. */
         std::shared_ptr<void const> m_unboundDevice;
@@ -5150,7 +5157,7 @@ namespace alpakaTune
         metrics::detail::MeasurementQueue m_metricsQueue;
 #endif
         std::string m_metricName;
-        [[no_unique_address]] MetricPolicy m_metricPolicy;
+        [[no_unique_address]] T_MetricPolicy m_metricPolicy;
         std::vector<std::size_t> m_dimensionSizes;
         detail::CandidateSpace<dimensionCount> m_space;
         std::vector<std::function<bool(Tuner const&, std::array<std::size_t, dimensionCount>&, bool)>>
@@ -5253,12 +5260,12 @@ namespace alpakaTune
      * API, device kind or string, to keep measurements of different devices
      * apart.
      */
-    template<typename TunablesType, typename... ContextArguments>
-    requires detail::isTunableBundle<TunablesType>
+    template<typename T_TunablesType, typename... T_ContextArguments>
+    requires detail::isTunableBundle<T_TunablesType>
     [[nodiscard]] auto makeTuner(
         TunerConfig config,
-        TunablesType tunables,
-        ContextArguments const&... contextArguments)
+        T_TunablesType tunables,
+        T_ContextArguments const&... contextArguments)
     {
         auto context = detail::TuningContext{contextArguments...};
         static_assert(
@@ -5283,7 +5290,7 @@ namespace alpakaTune
             config.completeHistory.file,
             config.completeHistory.read,
             config.completeHistory.write);
-        return Tuner<TunablesType, ALPAKA_TYPEOF(context), MetricPolicy>{
+        return Tuner<T_TunablesType, ALPAKA_TYPEOF(context), MetricPolicy>{
             std::move(config),
             std::move(history),
             std::move(completeHistory),
@@ -5298,9 +5305,9 @@ namespace alpakaTune
      * Accepts the same context arguments as the TunerConfig overload, including
      * its warning for tuners without a device argument.
      */
-    template<typename TunablesType, typename... ContextArguments>
-    requires detail::isTunableBundle<TunablesType>
-    [[nodiscard]] auto makeTuner(TunablesType tunables, ContextArguments const&... contextArguments)
+    template<typename T_TunablesType, typename... T_ContextArguments>
+    requires detail::isTunableBundle<T_TunablesType>
+    [[nodiscard]] auto makeTuner(T_TunablesType tunables, T_ContextArguments const&... contextArguments)
     {
         return makeTuner(tunerConfig(), std::move(tunables), contextArguments...);
     }

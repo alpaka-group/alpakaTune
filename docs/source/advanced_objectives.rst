@@ -51,7 +51,7 @@ for example ``--backend cuda:nvidiaGpu`` in a CUDA build.
 See ``example/adaptivePi/README.md``, ``src/adaptivePi.cpp``, and
 ``src/PiKernel.hpp``, ``src/PiCalculator.hpp``, and ``src/AdaptivePi.hpp``
 for the commented implementation. It loosely follows the
-quarter-circle sampling idea from `Alpaka's Monte Carlo integration example
+quarter-circle sampling idea from `alpaka's Monte Carlo integration example
 <https://github.com/alpaka-group/alpaka/blob/develop/example/monteCarloIntegration/src/monteCarloIntegration.cpp>`_.
 Its adaptive refinement and tuning scheme are independent.
 
