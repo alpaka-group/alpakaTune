@@ -11,11 +11,12 @@
 #include "analyticalSolution.hpp"
 
 #ifdef PNGWRITER_ENABLED
-#include "writeImage.hpp"
+#    include "writeImage.hpp"
 #endif
 
 #include <alpaka/alpaka.hpp>
 
+#include <getopt.h>
 #include <tuning.hpp>
 
 #include <algorithm>
@@ -23,433 +24,476 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
-#include <getopt.h>
 #include <iostream>
 #include <utility>
 
-namespace alpaka::example::heatEquation {
-using IdxType = uint32_t;
-using Data = double;
+namespace alpaka::example::heatEquation
+{
+    using IdxType = uint32_t;
+    using Data = double;
 
-inline constexpr auto stencilTileExtent =
-    ALPAKA_TUNE_TUNABLE("stencilTileExtent");
+    inline constexpr auto stencilTileExtent = ALPAKA_TUNE_TUNABLE("stencilTileExtent");
 
-enum class TuningRunMode { fixedSteps, untilPolicyGoal, untilComplete };
+    enum class TuningRunMode
+    {
+        fixedSteps,
+        untilPolicyGoal,
+        untilComplete
+    };
 
-[[nodiscard]] constexpr auto extendsForTuningCollection(TuningRunMode mode)
-    -> bool {
-  return mode != TuningRunMode::fixedSteps;
-}
+    [[nodiscard]] constexpr auto extendsForTuningCollection(TuningRunMode mode) -> bool
+    {
+        return mode != TuningRunMode::fixedSteps;
+    }
 
-void printExampleHeader(IdxType const sideLength, IdxType const numTimeSteps,
-                        bool const autoCheck, double const tMax) {
-  std::cout << "================================" << std::endl;
-  std::cout << "Example Heat Equation Stencil" << std::endl;
-  std::cout << "    Number of elements [#]: " << sideLength << " x "
-            << sideLength << " = " << sideLength * sideLength << std::endl;
-  std::cout << "    Time steps [#]: " << numTimeSteps << std::endl;
-  std::cout << "    tMax: " << tMax << std::endl;
-  std::cout << "    Element type: " << onHost::demangledName<Data>()
-            << std::endl;
-  std::cout << "    Buffer size [kbyte]: "
-            << sideLength * sideLength * sizeof(Data) / 1.e3 << std::endl;
-  std::cout << "    Result checking is " << (autoCheck ? "enabled" : "disabled")
-            << std::endl;
-  std::cout << "================================" << std::endl;
-  std::cout << std::endl;
-}
+    void printExampleHeader(
+        IdxType const sideLength,
+        IdxType const numTimeSteps,
+        bool const autoCheck,
+        double const tMax)
+    {
+        std::cout << "================================" << std::endl;
+        std::cout << "Example Heat Equation Stencil" << std::endl;
+        std::cout << "    Number of elements [#]: " << sideLength << " x " << sideLength << " = "
+                  << sideLength * sideLength << std::endl;
+        std::cout << "    Time steps [#]: " << numTimeSteps << std::endl;
+        std::cout << "    tMax: " << tMax << std::endl;
+        std::cout << "    Element type: " << onHost::demangledName<Data>() << std::endl;
+        std::cout << "    Buffer size [kbyte]: " << sideLength * sideLength * sizeof(Data) / 1.e3 << std::endl;
+        std::cout << "    Result checking is " << (autoCheck ? "enabled" : "disabled") << std::endl;
+        std::cout << "================================" << std::endl;
+        std::cout << std::endl;
+    }
 
-//! Each kernel computes the next step for one point.
-//! Therefore, the number of threads should be equal to numNodesX.
-//! Every time step the kernel will be executed numNodesX-times
-//! After every step the curr-buffer will be set to the calculated values
-//! from the next-buffer.
-//!
-//! In standard projects, you typically do not execute the code with any
-//! available accelerator. Instead, a single accelerator is selected once from
-//! the active accelerators and the kernels are executed with the selected
-//! accelerator only. If you use the example as the starting point for your
-//! project, you can rename the example() function to main() and move the
-//! accelerator tag to the function body.
-int example(auto const deviceSpec, auto const computeExec,
-            uint32_t const sideLength, uint32_t const numTimeSteps,
-            double const tMax, bool const enableCheck,
-            TuningRunMode const tuningRunMode) {
-  using namespace alpaka;
-  using namespace alpaka::onHost;
+    //! Each kernel computes the next step for one point.
+    //! Therefore, the number of threads should be equal to numNodesX.
+    //! Every time step the kernel will be executed numNodesX-times
+    //! After every step the curr-buffer will be set to the calculated values
+    //! from the next-buffer.
+    //!
+    //! In standard projects, you typically do not execute the code with any
+    //! available accelerator. Instead, a single accelerator is selected once from
+    //! the active accelerators and the kernels are executed with the selected
+    //! accelerator only. If you use the example as the starting point for your
+    //! project, you can rename the example() function to main() and move the
+    //! accelerator tag to the function body.
+    int example(
+        auto const deviceSpec,
+        auto const computeExec,
+        uint32_t const sideLength,
+        uint32_t const numTimeSteps,
+        double const tMax,
+        bool const enableCheck,
+        TuningRunMode const tuningRunMode)
+    {
+        using namespace alpaka;
+        using namespace alpaka::onHost;
 
-  constexpr uint32_t Dimensions = 2u;
-  using IdxTypeVec = Vec<IdxType, Dimensions>;
+        constexpr uint32_t dimensions = 2u;
+        using IdxTypeVec = Vec<IdxType, dimensions>;
 
-  std::cout << deviceSpec.getApi().getName() << std::endl;
+        std::cout << deviceSpec.getApi().getName() << std::endl;
 
-  auto devSelector = makeDeviceSelector(deviceSpec);
-  Device devAcc = devSelector.makeDevice(0);
+        auto devSelector = makeDeviceSelector(deviceSpec);
+        Device devAcc = devSelector.makeDevice(0);
 
 #if ALPAKA_LANG_ONEAPI
-  // support for double precision is not guaranteed for sycl devices such as
-  // Intel GPUs
-  if constexpr (deviceSpec.getApi() == api::oneApi &&
-                std::is_same_v<Data, double>) {
-    if (devAcc.getNativeHandle()
-            .first.template get_info<sycl::info::device::double_fp_config>()
-            .size() == 0) {
-      std::cout << getName(devAcc) << " does not support double precision"
-                << "\n";
-      std::cout << "Skip benchmark.\n";
-      std::cout << "For Intel Arc GPUs, use the environment variables "
-                   "`IGC_EnableDPEmulation=1 "
-                   "OverrideDefaultFP64Settings=1` to emulate double precision "
-                   "support.\n";
-      // return 0 otherwise ctest fails
-      return EXIT_SUCCESS;
-    }
-  }
+        // support for double precision is not guaranteed for sycl devices such as
+        // Intel GPUs
+        if constexpr(deviceSpec.getApi() == api::oneApi && std::is_same_v<Data, double>)
+        {
+            if(devAcc.getNativeHandle().first.template get_info<sycl::info::device::double_fp_config>().size() == 0)
+            {
+                std::cout << getName(devAcc) << " does not support double precision"
+                          << "\n";
+                std::cout << "Skip benchmark.\n";
+                std::cout << "For Intel Arc GPUs, use the environment variables "
+                             "`IGC_EnableDPEmulation=1 "
+                             "OverrideDefaultFP64Settings=1` to emulate double precision "
+                             "support.\n";
+                // return 0 otherwise ctest fails
+                return EXIT_SUCCESS;
+            }
+        }
 #endif
 
-  // simulation defines
-  // {Y, X}
-  IdxTypeVec const numNodes{sideLength, sideLength};
-  IdxTypeVec const haloSize{1, 1};
-  IdxTypeVec const extent = numNodes + haloSize + haloSize;
+        // simulation defines
+        // {Y, X}
+        IdxTypeVec const numNodes{sideLength, sideLength};
+        IdxTypeVec const haloSize{1, 1};
+        IdxTypeVec const extent = numNodes + haloSize + haloSize;
 
-  // x, y in [0, 1], t in [0, tMax]
-  Data const dx = 1.0 / static_cast<Data>(extent[1] - 1);
-  Data const dy = 1.0 / static_cast<Data>(extent[0] - 1);
-  Data const dt = tMax / static_cast<Data>(numTimeSteps);
+        // x, y in [0, 1], t in [0, tMax]
+        Data const dx = 1.0 / static_cast<Data>(extent[1] - 1);
+        Data const dy = 1.0 / static_cast<Data>(extent[0] - 1);
+        Data const dt = tMax / static_cast<Data>(numTimeSteps);
 
-  // Check the stability condition
-  Data const r = 2 * dt / ((dx * dx * dy * dy) / (dx * dx + dy * dy));
-  if (r > 1.) {
-    std::cerr << "Stability condition check failed: dt/min(dx^2,dy^2) = " << r
-              << ", it is required to be <= 0.5\n";
-    return EXIT_FAILURE;
-  }
+        // Check the stability condition
+        Data const r = 2 * dt / ((dx * dx * dy * dy) / (dx * dx + dy * dy));
+        if(r > 1.)
+        {
+            std::cerr << "Stability condition check failed: dt/min(dx^2,dy^2) = " << r
+                      << ", it is required to be <= 0.5\n";
+            return EXIT_FAILURE;
+        }
 
-  // Initialize host-buffer
-  // This buffer will hold the current values (used for the next step)
-  auto uBufHost = allocHost<Data>(extent);
+        // Initialize host-buffer
+        // This buffer will hold the current values (used for the next step)
+        auto uBufHost = allocHost<Data>(extent);
 
-  // Accelerator buffer
-  auto uCurrBufAcc = allocLike(devAcc, uBufHost);
-  auto uNextBufAcc = allocLike(devAcc, uBufHost);
+        // Accelerator buffer
+        auto uCurrBufAcc = allocLike(devAcc, uBufHost);
+        auto uNextBufAcc = allocLike(devAcc, uBufHost);
 
-  // Set buffer to initial conditions
-  initalizeBuffer(uBufHost.getMdSpan(), dx, dy);
+        // Set buffer to initial conditions
+        initalizeBuffer(uBufHost.getMdSpan(), dx, dy);
 
-  // Select queue
-  Queue dumpQueue = devAcc.makeQueue();
-  Queue computeQueue = devAcc.makeQueue();
+        // Select queue
+        Queue dumpQueue = devAcc.makeQueue();
+        Queue computeQueue = devAcc.makeQueue();
 
-  // Copy host -> device
-  memcpy(computeQueue, uCurrBufAcc, uBufHost);
-  wait(computeQueue);
+        // Copy host -> device
+        memcpy(computeQueue, uCurrBufAcc, uBufHost);
+        wait(computeQueue);
 
-  // Appropriate chunk size to split your problem for your Acc
-  constexpr IdxType xSize = 16u;
-  constexpr IdxType ySize = 16u;
-  constexpr IdxType halo = 2u;
-  constexpr auto chunkSize = CVec<IdxType, ySize, xSize>{};
-  auto const numNodesWithHalo = numNodes + halo;
+        // Appropriate chunk size to split your problem for your Acc
+        constexpr IdxType xSize = 16u;
+        constexpr IdxType ySize = 16u;
+        constexpr IdxType halo = 2u;
+        constexpr auto chunkSize = CVec<IdxType, ySize, xSize>{};
+        auto const numNodesWithHalo = numNodes + halo;
 
-  IdxTypeVec const numChunks{
-      divCeil(numNodes[0], chunkSize[0]),
-      divCeil(numNodes[1], chunkSize[1]),
-  };
+        IdxTypeVec const numChunks{
+            divCeil(numNodes[0], chunkSize[0]),
+            divCeil(numNodes[1], chunkSize[1]),
+        };
 
-  assert(numNodes[0] % chunkSize[0] == 0 && numNodes[1] % chunkSize[1] == 0 &&
-         "Domain must be divisible by chunk size");
+        assert(
+            numNodes[0] % chunkSize[0] == 0 && numNodes[1] % chunkSize[1] == 0
+            && "Domain must be divisible by chunk size");
 
-  StencilKernel stencilKernel;
-  BoundaryKernel boundaryKernel;
+        StencilKernel stencilKernel;
+        BoundaryKernel boundaryKernel;
 
-  auto const dataBlockingStencil = FrameSpec{numChunks, chunkSize, computeExec};
+        auto const dataBlockingStencil = FrameSpec{numChunks, chunkSize, computeExec};
 
-  auto const longestSide = std::max(numNodesWithHalo.y(), numNodesWithHalo.x());
-  auto const dataBlockingBorder =
-      FrameSpec{Vec{longestSide / chunkSize.x()},
-                Vec{std::max(chunkSize.y(), chunkSize.x())}, computeExec};
-  auto const stencilTunables = alpakaTune::TunableBundle{
-      alpakaTune::numFrames(alpakaTune::generate::linSpace(
-          IdxTypeVec::fill(1u), IdxTypeVec{dataBlockingStencil.getNumFrames()},
-          IdxTypeVec::fill(1u))),
-      alpakaTune::frameExtent(alpakaTune::generate::linSpace(
-          IdxTypeVec::fill(1u), IdxTypeVec::fill(4u), IdxTypeVec::fill(1u))),
-      stencilTileExtent(
-          alpakaTune::CTypes<CVec<IdxType, 4u, 4u>, CVec<IdxType, 8u, 8u>,
-                             CVec<IdxType, ySize, xSize>>{})};
-  auto stencilTuning =
-      alpakaTune::makeTuner(alpakaTune::example::tunerConfig(), stencilTunables,
-                            devAcc, "heatEquation2D/stencil");
-  auto tuningQueue =
-      devAcc.makeQueue(alpaka::queueKind::nonBlocking, alpaka::timing::enabled);
-  assert(stencilTuning.info().candidateCount >= 2000u);
+        auto const longestSide = std::max(numNodesWithHalo.y(), numNodesWithHalo.x());
+        auto const dataBlockingBorder
+            = FrameSpec{Vec{longestSide / chunkSize.x()}, Vec{std::max(chunkSize.y(), chunkSize.x())}, computeExec};
+        auto const stencilTunables = alpakaTune::TunableBundle{
+            alpakaTune::numFrames(
+                alpakaTune::generate::linSpace(
+                    IdxTypeVec::fill(1u),
+                    IdxTypeVec{dataBlockingStencil.getNumFrames()},
+                    IdxTypeVec::fill(1u))),
+            alpakaTune::frameExtent(
+                alpakaTune::generate::linSpace(IdxTypeVec::fill(1u), IdxTypeVec::fill(4u), IdxTypeVec::fill(1u))),
+            stencilTileExtent(
+                alpakaTune::CTypes<CVec<IdxType, 4u, 4u>, CVec<IdxType, 8u, 8u>, CVec<IdxType, ySize, xSize>>{})};
+        auto stencilTuning = alpakaTune::makeTuner(
+            alpakaTune::example::tunerConfig(),
+            stencilTunables,
+            devAcc,
+            "heatEquation2D/stencil");
+        auto tuningQueue = devAcc.makeQueue(alpaka::queueKind::nonBlocking, alpaka::timing::enabled);
+        assert(stencilTuning.info().candidateCount >= 2000u);
 
-  memcpy(computeQueue, uCurrBufAcc, uBufHost);
-  wait(computeQueue);
+        memcpy(computeQueue, uCurrBufAcc, uBufHost);
+        wait(computeQueue);
 
-  auto const startTime = std::chrono::high_resolution_clock::now();
+        auto const startTime = std::chrono::high_resolution_clock::now();
 
-  // Tune the stencil; the boundary uses its fixed launch on the same
-  // queue. Normal simulation keeps exactly numTimeSteps. Collection modes
-  // observe only the stencil's policy goal while preserving the pair of
-  // launches.
-  std::size_t completedSteps = 0u;
-  for (uint32_t step = 1;
-       step <= numTimeSteps || (extendsForTuningCollection(tuningRunMode) &&
-                                alpakaTune::example::applicationRunsRemain(
-                                    completedSteps, stencilTuning));
-       ++step) {
-    ++completedSteps;
-    // Compute next values
-    stencilTuning.enqueue(tuningQueue, dataBlockingStencil, stencilKernel,
-                          uCurrBufAcc, uNextBufAcc, stencilTileExtent, numNodes,
-                          dx, dy, dt);
-    tuningQueue.enqueue(dataBlockingBorder,
-                        KernelBundle{boundaryKernel, uNextBufAcc.getMdSpan(),
-                                     numNodesWithHalo, step, dx, dy, dt});
+        // Tune the stencil; the boundary uses its fixed launch on the same
+        // queue. Normal simulation keeps exactly numTimeSteps. Collection modes
+        // observe only the stencil's policy goal while preserving the pair of
+        // launches.
+        std::size_t completedSteps = 0u;
+        for(uint32_t step = 1; step <= numTimeSteps
+                               || (extendsForTuningCollection(tuningRunMode)
+                                   && alpakaTune::example::applicationRunsRemain(completedSteps, stencilTuning));
+            ++step)
+        {
+            ++completedSteps;
+            // Compute next values
+            stencilTuning.enqueue(
+                tuningQueue,
+                dataBlockingStencil,
+                stencilKernel,
+                uCurrBufAcc,
+                uNextBufAcc,
+                stencilTileExtent,
+                numNodes,
+                dx,
+                dy,
+                dt);
+            tuningQueue.enqueue(
+                dataBlockingBorder,
+                KernelBundle{boundaryKernel, uNextBufAcc.getMdSpan(), numNodesWithHalo, step, dx, dy, dt});
 
 #ifdef PNGWRITER_ENABLED
-    if ((step - 1) % 100 == 0) {
-      alpaka::onHost::wait(tuningQueue);
-      memcpy(dumpQueue, uBufHost, uCurrBufAcc);
-      wait(dumpQueue);
-      writeImage(step - 1, uBufHost.getMdSpan());
-    }
+            if((step - 1) % 100 == 0)
+            {
+                alpaka::onHost::wait(tuningQueue);
+                memcpy(dumpQueue, uBufHost, uCurrBufAcc);
+                wait(dumpQueue);
+                writeImage(step - 1, uBufHost.getMdSpan());
+            }
 #endif
 
-    // So we just swap next and curr (shallow copy)
-    std::swap(uNextBufAcc, uCurrBufAcc);
-  }
+            // So we just swap next and curr (shallow copy)
+            std::swap(uNextBufAcc, uCurrBufAcc);
+        }
 
-  wait(computeQueue);
-  alpaka::onHost::wait(tuningQueue);
-  auto const endTime = std::chrono::high_resolution_clock::now();
-  std::chrono::duration<double> elapsedTime = endTime - startTime;
+        wait(computeQueue);
+        alpaka::onHost::wait(tuningQueue);
+        auto const endTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsedTime = endTime - startTime;
 
-  std::cout << "Simulation took " << elapsedTime.count() << " seconds."
-            << std::endl;
-  std::cout << "Time per time step: "
-            << elapsedTime.count() / completedSteps * 1000 << " ms."
-            << std::endl;
-  if (extendsForTuningCollection(tuningRunMode)) {
-    if (alpakaTune::example::applicationRunsRemain(completedSteps,
-                                                   stencilTuning)) {
-      std::cerr << "Tuning collection stopped before the application minimum "
-                   "and every tuning-policy goal were reached."
-                << std::endl;
-      return EXIT_FAILURE;
+        std::cout << "Simulation took " << elapsedTime.count() << " seconds." << std::endl;
+        std::cout << "Time per time step: " << elapsedTime.count() / completedSteps * 1000 << " ms." << std::endl;
+        if(extendsForTuningCollection(tuningRunMode))
+        {
+            if(alpakaTune::example::applicationRunsRemain(completedSteps, stencilTuning))
+            {
+                std::cerr << "Tuning collection stopped before the application minimum "
+                             "and every tuning-policy goal were reached."
+                          << std::endl;
+                return EXIT_FAILURE;
+            }
+
+            auto const fullCoverageComplete
+                = stencilTuning.isTuningComplete()
+                  && stencilTuning.completionReason() == alpakaTune::TunerCompletionReason::allConfigurations;
+            if(tuningRunMode == TuningRunMode::untilComplete && !fullCoverageComplete)
+            {
+                std::cerr << "Full-coverage tuning stopped at a configured "
+                             "completion limit."
+                          << std::endl;
+                return EXIT_FAILURE;
+            }
+
+            if(tuningRunMode == TuningRunMode::untilComplete)
+            {
+                std::cout << "Full-coverage tuning mode executed " << completedSteps
+                          << " time steps and completed every tuning context." << std::endl;
+            }
+            else
+            {
+                std::cout << "Tuning-collection mode executed " << completedSteps
+                          << " time steps and reached the application minimum plus every "
+                             "tuning-policy goal.";
+                if(stencilTuning.isTuningComplete())
+                    std::cout << " Terminal reasons: stencil="
+                              << alpakaTune::completionReasonName(stencilTuning.completionReason());
+                else
+                    std::cout << " Adaptive horizons reached; tuning remains active";
+                std::cout << "." << std::endl;
+            }
+            return EXIT_SUCCESS;
+        }
+
+        alpaka::onHost::wait(tuningQueue);
+        // Copy device -> host
+        memcpy(dumpQueue, uBufHost, uCurrBufAcc);
+        wait(dumpQueue);
+
+        // Validate
+        if(!enableCheck)
+            return EXIT_SUCCESS;
+
+        auto const [resultIsCorrect, maxError] = validateSolution(uBufHost.getMdSpan(), extent, dx, dy, tMax);
+
+        if(resultIsCorrect)
+        {
+            std::cout << "Execution results correct!" << std::endl;
+            return EXIT_SUCCESS;
+        }
+        else
+        {
+            std::cout << "Execution results incorrect: Max error = " << maxError
+                      << " (the grid resolution may be too low)" << std::endl;
+            return EXIT_FAILURE;
+        }
     }
 
-    auto const fullCoverageComplete =
-        stencilTuning.isTuningComplete() &&
-        stencilTuning.completionReason() ==
-            alpakaTune::TunerCompletionReason::allConfigurations;
-    if (tuningRunMode == TuningRunMode::untilComplete &&
-        !fullCoverageComplete) {
-      std::cerr << "Full-coverage tuning stopped at a configured "
-                   "completion limit."
-                << std::endl;
-      return EXIT_FAILURE;
+    void help(char* argv[])
+    {
+        std::cerr << argv[0] << " [OPTIONS]" << std::endl;
+        std::cerr << "  -n sideLength: Number of elements per side of the 2D plane. "
+                     "Default: 2^6 = 64"
+                  << std::endl;
+        std::cerr << "  -t numTimeSteps: Number of time steps that the simulation is "
+                     "run for. Default: 4000"
+                  << std::endl;
+        std::cerr << "  -d tMax: Delta t for the timesteps, has to be smaller for "
+                     "larger sideLengths to pass the "
+                     "stability condition. Default: 0.1"
+                  << std::endl;
+        std::cerr << "  -c: disable checking for correct results" << std::endl;
+        std::cerr << "  --tune-until-complete: benchmark-only mode; continue safe "
+                     "kernel launches for at least 50000 iterations and until every "
+                     "tuning context exhausts all configurations; fail if a "
+                     "configured budget stops tuning first"
+                  << std::endl;
+        std::cerr << "  --tune-until-terminal: benchmark-only mode; continue safe "
+                     "kernel launches through the 50000-iteration application "
+                     "minimum and every "
+                     "context's policy goal; the legacy option name is retained"
+                  << std::endl;
+        std::cerr << "  -h: Print this help message" << std::endl;
+        std::cerr << std::endl;
+        alpakaTune::example::printObjectiveHelp();
     }
-
-    if (tuningRunMode == TuningRunMode::untilComplete) {
-      std::cout << "Full-coverage tuning mode executed " << completedSteps
-                << " time steps and completed every tuning context."
-                << std::endl;
-    } else {
-      std::cout << "Tuning-collection mode executed " << completedSteps
-                << " time steps and reached the application minimum plus every "
-                   "tuning-policy goal.";
-      if (stencilTuning.isTuningComplete())
-        std::cout << " Terminal reasons: stencil="
-                  << alpakaTune::completionReasonName(
-                         stencilTuning.completionReason());
-      else
-        std::cout << " Adaptive horizons reached; tuning remains active";
-      std::cout << "." << std::endl;
-    }
-    return EXIT_SUCCESS;
-  }
-
-  alpaka::onHost::wait(tuningQueue);
-  // Copy device -> host
-  memcpy(dumpQueue, uBufHost, uCurrBufAcc);
-  wait(dumpQueue);
-
-  // Validate
-  if (!enableCheck)
-    return EXIT_SUCCESS;
-
-  auto const [resultIsCorrect, maxError] =
-      validateSolution(uBufHost.getMdSpan(), extent, dx, dy, tMax);
-
-  if (resultIsCorrect) {
-    std::cout << "Execution results correct!" << std::endl;
-    return EXIT_SUCCESS;
-  } else {
-    std::cout << "Execution results incorrect: Max error = " << maxError
-              << " (the grid resolution may be too low)" << std::endl;
-    return EXIT_FAILURE;
-  }
-}
-
-void help(char *argv[]) {
-  std::cerr << argv[0] << " [OPTIONS]" << std::endl;
-  std::cerr << "  -n sideLength: Number of elements per side of the 2D plane. "
-               "Default: 2^6 = 64"
-            << std::endl;
-  std::cerr << "  -t numTimeSteps: Number of time steps that the simulation is "
-               "run for. Default: 4000"
-            << std::endl;
-  std::cerr << "  -d tMax: Delta t for the timesteps, has to be smaller for "
-               "larger sideLengths to pass the "
-               "stability condition. Default: 0.1"
-            << std::endl;
-  std::cerr << "  -c: disable checking for correct results" << std::endl;
-  std::cerr << "  --tune-until-complete: benchmark-only mode; continue safe "
-               "kernel launches for at least 50000 iterations and until every "
-               "tuning context exhausts all configurations; fail if a "
-               "configured budget stops tuning first"
-            << std::endl;
-  std::cerr << "  --tune-until-terminal: benchmark-only mode; continue safe "
-               "kernel launches through the 50000-iteration application "
-               "minimum and every "
-               "context's policy goal; the legacy option name is retained"
-            << std::endl;
-  std::cerr << "  -h: Print this help message" << std::endl;
-  std::cerr << std::endl;
-  alpakaTune::example::printObjectiveHelp();
-}
 
 } // namespace alpaka::example::heatEquation
 
-auto main(int argc, char *argv[]) -> int {
-  if (!alpakaTune::consumeBackendOptions(argc, argv))
-    return EXIT_FAILURE;
-  if (!alpakaTune::example::consumeObjectiveOptions(argc, argv, "l2-misses"))
-    return EXIT_FAILURE;
-  using namespace alpaka;
-  using namespace alpaka::example::heatEquation;
+auto main(int argc, char* argv[]) -> int
+{
+    if(!alpakaTune::consumeBackendOptions(argc, argv))
+        return EXIT_FAILURE;
+    if(!alpakaTune::example::consumeObjectiveOptions(argc, argv, "l2-misses"))
+        return EXIT_FAILURE;
+    using namespace alpaka;
+    using namespace alpaka::example::heatEquation;
 
-  // Default value if no command line argument used
-  IdxType sideLength = 1 << 6;
-  IdxType numTimeSteps = 4000;
+    // Default value if no command line argument used
+    IdxType sideLength = 1 << 6;
+    IdxType numTimeSteps = 4000;
 
-  int opt;
-  bool enableCheck = true;
-  auto tuningRunMode = TuningRunMode::fixedSteps;
-  double tMax = 0.1;
+    int opt;
+    bool enableCheck = true;
+    auto tuningRunMode = TuningRunMode::fixedSteps;
+    double tMax = 0.1;
 
-  constexpr int tuneUntilTerminalOption = 256;
+    constexpr int tuneUntilTerminalOption = 256;
 
-  static option const longOptions[] = {
-      {"tune-until-complete", no_argument, nullptr, 'T'},
-      {"tune-until-terminal", no_argument, nullptr, tuneUntilTerminalOption},
-      {nullptr, 0, nullptr, 0}};
-  while ((opt = getopt_long(argc, argv, "hn:t:d:cT", longOptions, nullptr)) !=
-         -1) {
-    switch (opt) {
-    case 'n':
-      try {
-        sideLength = static_cast<IdxType>(std::stoull(optarg, nullptr, 0));
-      } catch (std::invalid_argument const &e) {
-        std::cerr << "Error: invalid argument '" << optarg << "'.\n";
-        return EXIT_FAILURE;
-      } catch (std::out_of_range const &e) {
-        std::cerr << "Error: value '" << optarg
-                  << "' out of range for unsigned long long.\n";
-        return EXIT_FAILURE;
-      }
-      break;
-    case 't':
-      try {
-        numTimeSteps = static_cast<IdxType>(std::stoull(optarg, nullptr, 0));
-      } catch (std::invalid_argument const &e) {
-        std::cerr << "Error: invalid argument '" << optarg << "'.\n";
-        return EXIT_FAILURE;
-      } catch (std::out_of_range const &e) {
-        std::cerr << "Error: value '" << optarg
-                  << "' out of range for unsigned long long.\n";
-        return EXIT_FAILURE;
-      }
-      break;
-    case 'd':
-      try {
-        tMax = std::stod(optarg, nullptr);
-      } catch (std::invalid_argument const &e) {
-        std::cerr << "Error: invalid argument '" << optarg << "'.\n";
-        return EXIT_FAILURE;
-      } catch (std::out_of_range const &e) {
-        std::cerr << "Error: value '" << optarg
-                  << "' out of range for unsigned long long.\n";
-        return EXIT_FAILURE;
-      }
-      break;
-    case 'h':
-      help(argv);
-      exit(EXIT_SUCCESS);
-    case 'c':
-      enableCheck = false;
-      break;
-    case 'T':
-      if (tuningRunMode == TuningRunMode::untilPolicyGoal) {
-        std::cerr << "Error: --tune-until-complete and "
-                     "--tune-until-terminal are mutually exclusive.\n";
-        return EXIT_FAILURE;
-      }
-      tuningRunMode = TuningRunMode::untilComplete;
-      break;
-    case tuneUntilTerminalOption:
-      if (tuningRunMode == TuningRunMode::untilComplete) {
-        std::cerr << "Error: --tune-until-complete and "
-                     "--tune-until-terminal are mutually exclusive.\n";
-        return EXIT_FAILURE;
-      }
-      tuningRunMode = TuningRunMode::untilPolicyGoal;
-      break;
-    default:
-      help(argv);
-      exit(EXIT_FAILURE);
+    static option const longOptions[]
+        = {{"tune-until-complete", no_argument, nullptr, 'T'},
+           {"tune-until-terminal", no_argument, nullptr, tuneUntilTerminalOption},
+           {nullptr, 0, nullptr, 0}};
+    while((opt = getopt_long(argc, argv, "hn:t:d:cT", longOptions, nullptr)) != -1)
+    {
+        switch(opt)
+        {
+        case 'n':
+            try
+            {
+                sideLength = static_cast<IdxType>(std::stoull(optarg, nullptr, 0));
+            }
+            catch(std::invalid_argument const& e)
+            {
+                std::cerr << "Error: invalid argument '" << optarg << "'.\n";
+                return EXIT_FAILURE;
+            }
+            catch(std::out_of_range const& e)
+            {
+                std::cerr << "Error: value '" << optarg << "' out of range for unsigned long long.\n";
+                return EXIT_FAILURE;
+            }
+            break;
+        case 't':
+            try
+            {
+                numTimeSteps = static_cast<IdxType>(std::stoull(optarg, nullptr, 0));
+            }
+            catch(std::invalid_argument const& e)
+            {
+                std::cerr << "Error: invalid argument '" << optarg << "'.\n";
+                return EXIT_FAILURE;
+            }
+            catch(std::out_of_range const& e)
+            {
+                std::cerr << "Error: value '" << optarg << "' out of range for unsigned long long.\n";
+                return EXIT_FAILURE;
+            }
+            break;
+        case 'd':
+            try
+            {
+                tMax = std::stod(optarg, nullptr);
+            }
+            catch(std::invalid_argument const& e)
+            {
+                std::cerr << "Error: invalid argument '" << optarg << "'.\n";
+                return EXIT_FAILURE;
+            }
+            catch(std::out_of_range const& e)
+            {
+                std::cerr << "Error: value '" << optarg << "' out of range for unsigned long long.\n";
+                return EXIT_FAILURE;
+            }
+            break;
+        case 'h':
+            help(argv);
+            exit(EXIT_SUCCESS);
+        case 'c':
+            enableCheck = false;
+            break;
+        case 'T':
+            if(tuningRunMode == TuningRunMode::untilPolicyGoal)
+            {
+                std::cerr << "Error: --tune-until-complete and "
+                             "--tune-until-terminal are mutually exclusive.\n";
+                return EXIT_FAILURE;
+            }
+            tuningRunMode = TuningRunMode::untilComplete;
+            break;
+        case tuneUntilTerminalOption:
+            if(tuningRunMode == TuningRunMode::untilComplete)
+            {
+                std::cerr << "Error: --tune-until-complete and "
+                             "--tune-until-terminal are mutually exclusive.\n";
+                return EXIT_FAILURE;
+            }
+            tuningRunMode = TuningRunMode::untilPolicyGoal;
+            break;
+        default:
+            help(argv);
+            exit(EXIT_FAILURE);
+        }
     }
-  }
 
-  printExampleHeader(sideLength, numTimeSteps, enableCheck, tMax);
+    printExampleHeader(sideLength, numTimeSteps, enableCheck, tMax);
 
-  /* Execute the example once for each backend (device specification + executor)
-   *
-   * If you would like to execute it for a single accelerator only you can use
-   * the following code.
-   *  @code{.cpp}
-   *  auto deviceSpec = onHost::DeviceSpec{api::cuda, deviceKind::nvidiaGpu};
-   *  auto executor = exec::gpuCuda;
-   *  return alpaka::example::heatEquation::example(deviceSpec, executor, ...);
-   *  @endcode
-   *
-   * Some examples for device specifications (depending on the active
-   * dependencies).
-   *
-   *   onHost::DeviceSpec{api::host, deviceKind::cpu}
-   *   onHost::DeviceSpec{api::cuda, deviceKind::nvidiaGpu}
-   *   onHost::DeviceSpec{api::hip, deviceKind::amdGpu}
-   *   onHost::DeviceSpec{api::oneApi, deviceKind::intelGpu}
-   *
-   * A list of api's and device kinds can be found
-   * https://alpaka3.readthedocs.io/en/latest/basic/cheatsheet.html#available-apis
-   * A list of executors can be found
-   * https://alpaka3.readthedocs.io/en/latest/basic/cheatsheet.html#executors
-   */
-  return onHost::executeForEach(
-      [=](alpaka::concepts::BackendSpec auto const &backend) {
-        if (!alpakaTune::backendSelected(backend))
-          return EXIT_SUCCESS;
-        auto selector =
-            onHost::makeDeviceSelector(alpaka::onHost::DeviceSpec{backend});
-        if (!selector.isAvailable())
-          return EXIT_SUCCESS;
-        return alpaka::example::heatEquation::example(
-            alpaka::onHost::DeviceSpec{backend}, alpaka::getExecutor(backend),
-            sideLength, numTimeSteps, tMax, enableCheck, tuningRunMode);
-      },
-      onHost::allBackends(onHost::enabledDeviceSpecs, exec::enabledExecutors));
+    /* Execute the example once for each backend (device specification + executor)
+     *
+     * If you would like to execute it for a single accelerator only you can use
+     * the following code.
+     *  @code{.cpp}
+     *  auto deviceSpec = onHost::DeviceSpec{api::cuda, deviceKind::nvidiaGpu};
+     *  auto executor = exec::gpuCuda;
+     *  return alpaka::example::heatEquation::example(deviceSpec, executor, ...);
+     *  @endcode
+     *
+     * Some examples for device specifications (depending on the active
+     * dependencies).
+     *
+     *   onHost::DeviceSpec{api::host, deviceKind::cpu}
+     *   onHost::DeviceSpec{api::cuda, deviceKind::nvidiaGpu}
+     *   onHost::DeviceSpec{api::hip, deviceKind::amdGpu}
+     *   onHost::DeviceSpec{api::oneApi, deviceKind::intelGpu}
+     *
+     * A list of api's and device kinds can be found
+     * https://alpaka.readthedocs.io/en/latest/basic/cheatsheet.html#available-apis
+     * A list of executors can be found
+     * https://alpaka.readthedocs.io/en/latest/basic/cheatsheet.html#executors
+     */
+    return onHost::executeForEach(
+        [=](alpaka::concepts::BackendSpec auto const& backend)
+        {
+            if(!alpakaTune::backendSelected(backend))
+                return EXIT_SUCCESS;
+            auto selector = onHost::makeDeviceSelector(alpaka::onHost::DeviceSpec{backend});
+            if(!selector.isAvailable())
+                return EXIT_SUCCESS;
+            return alpaka::example::heatEquation::example(
+                alpaka::onHost::DeviceSpec{backend},
+                alpaka::getExecutor(backend),
+                sideLength,
+                numTimeSteps,
+                tMax,
+                enableCheck,
+                tuningRunMode);
+        },
+        onHost::allBackends(onHost::enabledDeviceSpecs, exec::enabledExecutors));
 }

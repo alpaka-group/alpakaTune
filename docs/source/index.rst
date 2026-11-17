@@ -1,7 +1,7 @@
 alpakaTune
 ==========
 
-alpakaTune chooses a fast configuration for an Alpaka3 kernel while your
+alpakaTune chooses a fast configuration for an alpaka kernel while your
 application runs. You supply meaningful choices, such as batch sizes or launch
 shapes, as explicit alternatives or automatic domains. The tuner tries
 configurations, measures their cost, and uses
@@ -14,15 +14,16 @@ launch geometry. Use :doc:`automatic_spaces` to grow a candidate catalog from
 feedback, and :doc:`execution_modes` to choose exploration and selection
 independently. :doc:`history_workflows` shows how to replay or adapt from saved
 measurements in another run.
-The core guide describes the ``dev`` API. GPU availability depends on the Alpaka
-backends enabled in your build.
+GPU availability depends on the alpaka backends enabled in your build.
 
 Five concepts to keep in mind
 -----------------------------
 
-* **Tunable:** a named choice the tuner may change. ``RVals`` supplies runtime
-  values; ``CVals`` and ``CTypes`` supply compiled alternatives.
-  ``autoCandidates`` declares domains for progressive candidate generation.
+* **Tunable:** a named choice the tuner may change. Its *domain* is the set of
+  values it may take. ``RVals`` lists a runtime domain; ``CVals`` and
+  ``CTypes`` list compiled alternatives; ``interval`` describes a numeric
+  domain by its bounds. ``autoCandidates`` generates candidates step by step
+  from a domain that is too large to try completely.
 * **TunableBundle:** the domains and their restrictions. The tuner snapshots
   the declarations when constructed; an automatic catalog can grow within them.
 * **KernelBundle:** the launch prototype. Tunable markers in its arguments
@@ -67,12 +68,11 @@ Five concepts to keep in mind
 Experimental metrics
 --------------------
 
-The ``tunerEnhancedMetrics`` feature branch integrates the optional
-`alpakaMetrics <https://github.com/TimHanel00/alpakaMetrics>`_ dependency and
-adds counter-based objectives. Its :doc:`experimental_metrics` guide explains the CMake option, pinned Alpaka
-ownership, and metric availability. The callable scoring
-API in :doc:`custom_metrics` is already part of ``dev`` and needs no metrics
-dependency.
+The optional `alpakaMetrics <https://github.com/TimHanel00/alpakaMetrics>`_
+dependency adds counter-based objectives. Enable it with
+``-DalpakaTune_DEP_METRICS=ON``. The :doc:`experimental_metrics` guide explains
+the CMake option, pinned alpaka ownership, and metric availability. The callable
+scoring API in :doc:`custom_metrics` needs no metrics dependency.
 
 .. toctree::
    :maxdepth: 1

@@ -1,17 +1,15 @@
 Experimental metrics objectives
 ===============================
 
-This integration is currently available on the ``tunerEnhancedMetrics`` feature
-branch. The general scoring-function API in :doc:`custom_metrics` is also
-available on ``dev``. Metrics remain optional on the feature branch; ordinary
-runtime tuning works without them.
+This integration is optional and experimental. Enable it with
+``-DalpakaTune_DEP_METRICS=ON``. Ordinary runtime tuning and the general
+scoring-function API in :doc:`custom_metrics` work without it.
 
 Build and dependency ownership
 ------------------------------
 
 .. code-block:: sh
 
-   git switch tunerEnhancedMetrics
    cmake -S . -B build-metrics -G Ninja \
        -DCMAKE_BUILD_TYPE=Release \
        -DalpakaTune_BUILD_EXAMPLES=ON \
@@ -20,12 +18,12 @@ Build and dependency ownership
        -DalpakaMetrics_DEP_PAPI=OFF
    cmake --build build-metrics
 
-``alpakaTune_DEP_METRICS`` defaults to ``OFF``. alpakaTune owns the Alpaka
-revision in both modes and fetches the Alpaka 3.0.0 release
+``alpakaTune_DEP_METRICS`` defaults to ``OFF``. alpakaTune owns the alpaka
+revision in both modes and fetches the alpaka 3.0.0 release
 (``eb677e8d7f70d79b35df25d9002f94ba669b6f44``). With metrics enabled it then
 fetches `alpakaMetrics
 <https://github.com/TimHanel00/alpakaMetrics/tree/b2f3fbf5086f875a1fea41dabe198df8bf76f7f1>`_,
-which only fetches Alpaka itself when no ``alpaka::alpaka`` target exists, so
+which only fetches alpaka itself when no ``alpaka::alpaka`` target exists, so
 both libraries and all consumers share the tuner's ``alpaka::alpaka`` target.
 With metrics disabled, metrics and PAPI are not fetched or discovered.
 
@@ -109,8 +107,8 @@ change the retained measurement; clearing queue history leaves it valid.
 Consume it before requesting the next tuner launch, as required by the
 last-enqueue contract.
 
-Use ``queue.getUnderlyingQueue()`` for Alpaka memory-copy operations that require
-an ordinary Alpaka queue. Explicitly wait for producing work before transferring
+Use ``queue.getUnderlyingQueue()`` for alpaka memory-copy operations that require
+an ordinary alpaka queue. Explicitly wait for producing work before transferring
 or validating buffers. Default timing also accepts the metrics queue, but the
 examples use the adapter's own elapsed result when it is the objective, avoiding
 a second timing layer.
