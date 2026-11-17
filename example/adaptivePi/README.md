@@ -16,13 +16,13 @@ build/example/adaptivePi/alpakaTune_adaptivePi --objective runtime --max-error 5
 build/example/adaptivePi/alpakaTune_adaptivePi --backend cuda:nvidiaGpu --objective accuracy
 ```
 
-Configure with `-DalpakaTune_BUILD_EXAMPLES=ON`. Enable the desired Alpaka backend at configuration time. By default the example
+Configure with `-DalpakaTune_BUILD_EXAMPLES=ON`. Enable the desired alpaka backend at configuration time. By default the example
 runs each enabled device/executor pairing with available hardware. Use
 `--backend api:deviceKind` and/or `--executor name` to select a pairing.
 
 ## Algorithm
 
-Start with the square `[0,1] × [0,1]`. At each level, an Alpaka kernel evaluates
+Start with the square `[0,1] × [0,1]`. At each level, an alpaka kernel evaluates
 the active frontier on the device:
 
 1. Retain the whole area when all four corners are inside the circle. The
@@ -39,10 +39,10 @@ hits in shared memory, and write one value weighted by that tile’s area.
 `onHost::reduce` sums this 2D buffer, then the host multiplies the area by four.
 Only the final scalar returns to the host in normal execution.
 Inside/outside tiles never re-enter the frontier. Monte Carlo points are not
-spent on early levels. Alpaka’s Philox engine uses strided sample indices as seeds, and its uniform
+spent on early levels. alpaka’s Philox engine uses strided sample indices as seeds, and its uniform
 real distribution samples coordinates inside the tile.
 
-The quarter-circle hit-count idea loosely follows Alpaka's
+The quarter-circle hit-count idea loosely follows alpaka's
 [Monte Carlo integration example](https://github.com/alpaka-group/alpaka/blob/develop/example/monteCarloIntegration/src/monteCarloIntegration.cpp).
 Adaptive refinement, tile retirement, and the optimization scheme are separate.
 

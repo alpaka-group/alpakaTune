@@ -2,7 +2,7 @@
 
 This example computes a row-major `M x K` by `K x N` single-precision matrix
 multiplication. It uses a two-level output tile, cooperatively loaded shared-memory
-tiles, register accumulators, and Alpaka `Simd` packs. The independently tunable
+tiles, register accumulators, and alpaka `Simd` packs. The independently tunable
 compile-time parameters are:
 
 - `blockRows` and `blockColumns`: the two output-tile directions;
@@ -31,8 +31,7 @@ build/example/matrixMultiplication/alpakaTune_matrixMultiplication \
   --backend cuda:nvidiaGpu --executor gpuCuda -m 512 -n 512 -k 512
 ```
 
-On the `tunerEnhancedMetrics` branch, an optional
-`-DalpakaTune_DEP_METRICS=ON` build supports queue elapsed time, CPU serial
+An optional `-DalpakaTune_DEP_METRICS=ON` build supports queue elapsed time, CPU serial
 instructions, L2 misses, and a user-defined weighted objective. Runtime remains
 the default. See `docs/source/experimental_metrics.rst` for build commands,
 normalization, collection scope, and runnable examples.
