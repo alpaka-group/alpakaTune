@@ -26,3 +26,16 @@ First release of alpakaTune, a header-only C++20 library for tuning launch shape
 - Identifiers follow alpaka's naming rules, checked by clang-tidy. Template parameters carry the `T_` prefix and member
   type aliases are written in CamelCase, for example `CVals::Values`, `ValuesType` and `EntriesType`.
 - C++ sources are formatted with alpaka's clang-format style.
+
+### Fixed
+
+- `RVals(minimum, maximum, step)` over unsigned types no longer continues beyond the maximum when the step exceeds it.
+- `generate::linSpace` and `generate::logSpace` end when the following value is not representable instead of looping
+  until memory is exhausted.
+- `Interval` over 8 and 16 bit integers reports its size and the index of a value correctly.
+- A recommendation that reveals a forbidden candidate no longer counts as a strategy retry, so a search reaches the
+  permitted candidates behind a long run of forbidden ones. A space without permitted candidates ends with
+  `noValidConfiguration`.
+- The Bayesian-optimization strategy no longer reports a singular kernel matrix for close observations.
+- An offline replay with fixed selection accepts a `runsPerCandidate` above `historyWindowSize`.
+- A budgeted tuner accepts the metric of a launch that the application invalidated.
